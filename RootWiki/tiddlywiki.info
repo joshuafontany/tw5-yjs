@@ -1,0 +1,15 @@
+{
+	"description": "This is the default RootWiki edition for the Yjs plugin",
+	"plugins": [
+		"joshuafontany/yjs",
+		"tiddlywiki/filesystem"
+	],
+	"themes": [
+		"tiddlywiki/vanilla",
+		"tiddlywiki/snowwhite"
+	],
+	"build": {
+		"index": [
+			"--rendertiddler","$:/core/save/all","index.html","text/plain"]
+	}
+}

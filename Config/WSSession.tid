@@ -1,0 +1,25 @@
+title: $:/config/joshuafontany/yjs/WSSession
+type: application/json
+note-heartbeat: Settings for the `heartbeat` that makes sure the browser and server are still connected (mostly in the browser, but also if acting as a federated client). You can almost certainly ignore these settings.
+note-heartbeat-interval: The heartbeat message is sent every `interval` milliseconds (1000 milliseconds = 1 second). Defaults to 1 second.
+note-heartbeat-timeout: The length of time to wait for a heartbeat signal before assuming that the connection is no longer working. Defaults to a 10 second timeout.
+note-reconnect: The settings for automatic reconnections.
+note-reconnect-auto: Will trigger automatic reconnection attempts if set to `true` (the default).
+note-reconnect-base: The base increment in ms.
+note-reconnect-max:  The maximum retry increment in ms. Defaults to 60 seconds.
+note-reconnect-decay: The exponential decay (d), of (d)^(number-of-retries).
+note-reconnect-abort: Automatically abort after this many tries.
+
+{
+  "heartbeat": {
+    "interval": 1000,
+    "timeout": 5000
+  },
+  "reconnect": {
+    "auto": true,
+    "base": 1200,
+    "max": 60000,
+    "decay": 1.5,
+    "abort": 10
+  },
+}

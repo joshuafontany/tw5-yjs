@@ -1,0 +1,19 @@
+{
+  "tiddlers": [
+    {
+      "file": "base64.js",
+      "fields": {
+        "type": "application/javascript",
+        "title": "$:/plugins/joshuafontany/yjs/External/js-base64/base64.js",
+        "module-type": "library"
+      }
+    },
+    {
+      "file": "README.md",
+      "fields": {
+        "type": "text/plain",
+        "title": "$:/plugins/joshuafontany/yjs/External/js-base64/README"
+      }
+    }
+  ]
+}

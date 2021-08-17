@@ -1,0 +1,19 @@
+{
+  "tiddlers": [
+    {
+      "file": "ip.js",
+      "fields": {
+        "type": "application/javascript",
+        "title": "$:/plugins/joshuafontany/yjs/External/IP/ip.js",
+        "module-type": "library"
+      }
+    },
+    {
+      "file": "README.md",
+      "fields": {
+        "type": "text/plain",
+        "title": "$:/plugins/joshuafontany/yjs/External/IP/README"
+      }
+    }
+  ]
+}
