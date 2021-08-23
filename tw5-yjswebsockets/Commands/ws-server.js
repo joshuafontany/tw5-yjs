@@ -1,5 +1,5 @@
 /*\
-title: $:/plugins/joshuafontany/tw5-yjs/Commands/ws-server.js
+title: $:/plugins/joshuafontany/tw5-yjs/commands/ws-server.js
 type: application/javascript
 module-type: command
 
@@ -37,15 +37,14 @@ Command.prototype.execute = function() {
     return;
   }
   // Set up http(s) server as $tw.Yjs.server.httpServer
-  let requiredPlugins = [
-    "$:/plugins/joshuafontany/tw5-yjs",
-    "$:/plugins/joshuafontany/tw5-yjswebsockets",
-    "$:/plugins/tiddlywiki/filesystem"
-  ];
   let variables = $tw.utils.extend(self.params,$tw.Yjs.settings);
 	$tw.Yjs.server = new MultiServer({
 		wiki: this.commander.wiki,
-    requiredPlugins: requiredPlugins.join(','),
+    requiredPlugins: [
+      "$:/plugins/joshuafontany/tw5-yjs",
+      "$:/plugins/joshuafontany/tw5-yjswebsockets",
+      "$:/plugins/tiddlywiki/filesystem"
+    ].join(','),
 		variables: variables
 	});
 	let httpServer = $tw.Yjs.server.listen();

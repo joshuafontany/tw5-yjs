@@ -4,7 +4,7 @@
   "host": "127.0.0.1",
   "path-prefix": "",
   "admin": "(authenticated)",
-  "readers": "(authenticated)",
+  "readers": "(anon)",
   "writers": "(authenticated)",
   "username": "",
   "password": "",

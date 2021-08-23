@@ -12,16 +12,16 @@ A core prototype to hand everything else onto.
 "use strict";
 
 const WebsocketSession = require('./WSSession.js').WebsocketSession;
-const Y = require('../tw5-yjs/yjs.cjs');
-const syncProtocol = require('../tw5-yjs/sync.cjs');
-const authProtocol = require('../tw5-yjs/auth.cjs');
-const awarenessProtocol = require('../tw5-yjs/awareness.cjs');
-const time = require('../tw5-yjs/lib0/dist/time.cjs');
-const encoding = require('../tw5-yjs/lib0/dist/encoding.cjs');
-const decoding = require('../tw5-yjs/lib0/dist/decoding.cjs');
-const mutex = require('../tw5-yjs/lib0/dist/mutex.cjs');
-const map = require('../tw5-yjs/lib0/dist/map.cjs');
-const observable_js = require('../tw5-yjs/lib0/dist/observable.cjs');
+const Y = require('./yjs.cjs');
+const syncProtocol = require('./sync.cjs');
+const authProtocol = require('./auth.cjs');
+const awarenessProtocol = require('./awareness.cjs');
+const time = require('./lib0/dist/time.cjs');
+const encoding = require('./lib0/dist/encoding.cjs');
+const decoding = require('./lib0/dist/decoding.cjs');
+const mutex = require('./lib0/dist/mutex.cjs');
+const map = require('./lib0/dist/map.cjs');
+const observable_js = require('./lib0/dist/observable.cjs');
 const { uniqueNamesGenerator, adjectives, colors, animals, names } = require('./External/unique-names-generator/dist/index.js');
 
 // Polyfill because IE uses old javascript
@@ -345,7 +345,7 @@ class YServer extends YSyncer {
     this.childproc = false;
 
     // Initialise the $tw.Yjs.settings object & load the user settings
-    this.settings = $tw.wiki.getTiddlerData('$:/plugins/joshuafontany/tw5-yjs/DefaultSettings',{});
+    this.settings = $tw.wiki.getTiddlerData('$:/config/joshuafontany/tw5-yjs/WSServer',{});
     this.loadSettings(this.settings,$tw.boot.wikiPath);
 
     // Users

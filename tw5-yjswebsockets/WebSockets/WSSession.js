@@ -19,16 +19,16 @@ Unlike stated in the LICENSE file, it is not necessary to include the copyright 
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-require('../tw5-yjs/yjs.cjs');
-const syncProtocol = require('../tw5-yjs/sync.cjs');
-const authProtocol = require('../tw5-yjs/auth.cjs');
-const awarenessProtocol = require('../tw5-yjs/awareness.cjs');
-const time = require('../tw5-yjs/lib0/dist/time.cjs');
-const encoding = require('../tw5-yjs/lib0/dist/encoding.cjs');
-const decoding = require('../tw5-yjs/lib0/dist/decoding.cjs');
-const observable_js = require('../tw5-yjs/lib0/dist/observable.cjs');
-const math = require('../tw5-yjs/lib0/dist/math.cjs');
-const random = require('../tw5-yjs/lib0/dist/random.cjs');
+require('./yjs.cjs');
+const syncProtocol = require('./sync.cjs');
+const authProtocol = require('./auth.cjs');
+const awarenessProtocol = require('./awareness.cjs');
+const time = require('./lib0/dist/time.cjs');
+const encoding = require('./lib0/dist/encoding.cjs');
+const decoding = require('./lib0/dist/decoding.cjs');
+const observable_js = require('./lib0/dist/observable.cjs');
+const math = require('./lib0/dist/math.cjs');
+const random = require('./lib0/dist/random.cjs');
 
 // Y message handler flags
 const messageSync = 0;

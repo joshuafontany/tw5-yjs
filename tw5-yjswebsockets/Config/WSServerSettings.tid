@@ -1,4 +1,4 @@
-title: $:/plugins/joshuafontany/tw5-yjs/DefaultSettings
+title: $:/config/joshuafontany/tw5-yjs/WSServer
 
 {
   "servername": "Yjs.wiki",
@@ -28,11 +28,6 @@ title: $:/plugins/joshuafontany/tw5-yjs/DefaultSettings
 
   "disableFileWatchers": "no",
   "suppressBrowser": false,
-
-  "required-plugins": [
-    "$:/plugins/joshuafontany/tw5-yjs",
-    "$:/plugins/tiddlywiki/filesystem"
-  ],
 
   "scripts": {
     "NewWiki": "tiddlywiki #wikiName --init #editionName"

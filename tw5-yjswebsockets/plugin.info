@@ -6,5 +6,5 @@
   "core-version": ">=5.1.23",
   "source": "",
   "plugin-type": "plugin",
-  "list": "readme license.md"
+  "list": "readme license.md Configuration.md Changelog.md"
 }

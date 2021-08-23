@@ -1,4 +1,4 @@
-title: $:/config/joshuafontany/tw5-yjs/Files/MIMEMap
+title: $:/config/joshuafontany/tw5-yjs/MIMEMap
 type: application/json
 note: Lists the file extensions and their associated mime-types that the server is allowed to serve. This only has an effect if `$:/config/joshuafontany/tw5-yjs/Files/FilePathRoot` is set.
 

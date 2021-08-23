@@ -11,7 +11,7 @@ A sync adaptor for syncing changes using websockets with Yjs
 /*global $tw: false */
 "use strict";
 
-const Y = require('../tw5-yjs/yjs.cjs'),
+const Y = require('./yjs.cjs'),
   CONFIG_HOST_TIDDLER = "$:/config/tw5-yjs/host",
   DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
 
