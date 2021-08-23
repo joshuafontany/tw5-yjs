@@ -1,6 +1,6 @@
 {
   "title": "$:/plugins/joshuafontany/tw5-yjs",
-  "description": "A plugin that imports Yjs libraries to TiddlyWiki5's module system",
+  "description": "Yjs libraries for TiddlyWiki5",
   "author": "joshuafontany",
   "version": "0.0.1",
   "core-version": ">=5.1.23",
