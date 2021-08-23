@@ -1,9 +1,6 @@
 {
-	"description": "This is the default RootWiki edition for the Yjs plugin",
-	"plugins": [
-		"joshuafontany/yjs",
-		"tiddlywiki/filesystem"
-	],
+	"description": "This is the default RootWiki edition for the tw5-yjswebsockets plugin",
+	"plugins": [],
 	"themes": [
 		"tiddlywiki/vanilla",
 		"tiddlywiki/snowwhite"

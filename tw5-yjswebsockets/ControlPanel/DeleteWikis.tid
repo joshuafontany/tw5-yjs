@@ -1,0 +1,57 @@
+title: $:/plugins/joshuafontany/tw5-yjs/DeleteWikis
+caption: Delete Wikis
+
+\define updateNameActions()
+<$action-websocketmessage
+  $type='deleteWiki'
+  deleteWiki={{$:/state/DeleteWiki!!delete_wiki}}
+  deleteChildren={{$:/state/DeleteWiki!!delete_children}}
+/>
+<$action-setfield
+  $tiddler='$:/state/DeleteWiki'
+  delete_wiki=''
+  delete_children=''
+/>
+\end
+
+<$reveal
+  type='nomatch'
+  state='$:/settings/tw5-yjs/Verbose'
+  text='false'
+>
+
+</$reveal>
+
+Select Wiki:
+<$select
+  tiddler='$:/state/DeleteWiki'
+  field='delete_wiki'
+>
+  <option
+    value=''
+  >
+    Select Wiki
+  </option>
+  <$list
+    filter='[list[$:/state/ViewableWikis]]'
+  >
+    <option>
+      <<currentTiddler>>
+    </option>
+  </$list>
+</$select> <<helpButton $:/plugins/joshuafontany/tw5-yjs/AboutDeleteWikiSelect>>
+
+<$checkbox
+  tiddler='$:/state/DeleteWiki'
+  field='delete_children'
+  checked='yes'
+  unchecked='no'
+>
+  Delete Children
+</$checkbox> <<helpButton $:/plugins/joshuafontany/tw5-yjs/AboutDeleteWikiSelect>>
+
+<$button
+  actions=<<updateNameActions>>
+>
+  Delete Wiki
+</$button>

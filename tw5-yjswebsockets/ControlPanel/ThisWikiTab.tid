@@ -1,0 +1,22 @@
+title: $:/plugins/joshuafontany/tw5-yjs/ThisWikiTab
+caption: This Wiki
+
+!!! Options that are specific to this wiki. They don't affect any other wikis.
+
+
+<$button>
+  Unload Wiki
+  <$action-websocketmessage
+    $type='unloadWiki'
+    wikiName={{$:/status/WikiName}}
+  />
+</$button> <<helpButton "$:/plugins/joshuafontany/tw5-yjs/AboutUnloadWiki">>
+
+You can set which plugins and themes are installed on this wiki here.
+Installing plugins this way is not the same as dragging and dropping plugins
+into the wiki, this can not remove plugins you have added that way, you have to
+delete the plugin tiddlers. Deleting the plugin tiddlers for plugins installed
+using this interface will not remove them, they have to be removed using this
+interface.
+
+<<tabs "[[$:/plugins/joshuafontany/tw5-yjs/SelectPlugins]][[$:/plugins/joshuafontany/tw5-yjs/SelectThemes]]" "$:/plugins/joshuafontany/tw5-yjs/SelectPlugins">>

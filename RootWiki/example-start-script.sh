@@ -7,4 +7,4 @@ export TIDDLYWIKI_EDITION_PATH="/c/tw/editions"
 
 # The two 'node ./tiddlywiki.js' arguments are the path to the folder that contains the
 # tiddlywiki.info file for the RootWiki and the server command for the Yjs plugin.
-node /c/tw/TiddlyWiki5/tiddlywiki.js "/c/tw/editions/joshuafontany.github.io" --ws-server
+node /c/tw/TiddlyWiki5/tiddlywiki.js "./RootWiki" --ws-server
