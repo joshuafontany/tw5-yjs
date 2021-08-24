@@ -22,7 +22,7 @@ exports.info = {
 exports.platforms = ["node"];
 
 const MultiServer = require('../MultiServer.js').MultiServer,
-  WebSocketServer = require('../WSServer.js').WebSocketServer;
+  WebSocketServer = require('../MultiServer.js').WebSocketServer;
 
 const Command = function(params,commander,callback) {
   this.params = params;
@@ -36,8 +36,17 @@ Command.prototype.execute = function() {
     $tw.utils.warning("Warning: Wiki folder '" + $tw.boot.wikiPath + "' does not exist or is missing a tiddlywiki.info file");
     return;
   }
+
+  // Initialise the server settings
+  let settings;
+  try {
+    settings = JSON.parse(fs.readFileSync(path.join($tw.boot.wikiPath, 'settings', 'settings.json')));
+  } catch (err) {
+    $tw.Yjs.logger.log('Server Settings Error - using default values.');
+    settings = {};
+  }
+  settings = $tw.utils.extend($tw.wiki.getTiddlerData('$:/config/joshuafontany/tw5-yjs/MultiServer',{}),settings);
   // Set up http(s) server as $tw.Yjs.server.httpServer
-  let variables = $tw.utils.extend(self.params,$tw.Yjs.settings);
 	$tw.Yjs.server = new MultiServer({
 		wiki: this.commander.wiki,
     requiredPlugins: [
@@ -45,7 +54,7 @@ Command.prototype.execute = function() {
       "$:/plugins/joshuafontany/tw5-yjswebsockets",
       "$:/plugins/tiddlywiki/filesystem"
     ].join(','),
-		variables: variables
+		variables: $tw.utils.extend(settings,self.params)
 	});
 	let httpServer = $tw.Yjs.server.listen();
   // Set up the the WebSocketServer
@@ -53,7 +62,7 @@ Command.prototype.execute = function() {
     clientTracking: false, 
     noServer: true // We roll our own Upgrade
   });
-  $tw.Yjs.logger.log(`TiddlyWiki v${$tw.version} with TW5-Yjs v${$tw.wiki.getTiddler('$:/plugins/joshuafontany/tw5-yjs').fields.version}`);
+  $tw.Yjs.logger.log(`TiddlyWiki v${$tw.version} with TW5-Yjs Websockets`);
 	$tw.hooks.invokeHook("th-server-command-post-start",httpServer,$tw.Yjs.server,"tiddlywiki");
   return null;
 };

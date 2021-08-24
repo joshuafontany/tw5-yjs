@@ -36,8 +36,6 @@ if(!String.prototype.startsWith) {
 */
 class YSyncer {
   constructor () {
-    // Version
-    this.version = $tw.wiki.getTiddler('$:/plugins/joshuafontany/tw5-yjs/yjs.cjs').fields.version;
     // Create a logger
     this.logger = $tw.node? new $tw.utils.Logger("Yjs-server"): new $tw.utils.Logger("Yjs-browser");
     // Access levels
@@ -46,9 +44,6 @@ class YSyncer {
       Writer: "writer",
       Admin: "admin"
     }
-    // Settings
-    this.settings = {};
-
     // Wikis
     this.Wikis = new Map();
 
@@ -63,12 +58,6 @@ class YSyncer {
 
     // Sessions
     this.sessions = new Map();
-
-    // Load the client-messagehandlers
-    this.clientHandlers = {};
-    $tw.modules.applyMethods("client-messagehandlers", this.clientHandlers);
-    // Reserve the server-messagehandlers
-    this.serverHandlers = null;
 
     // Setup external libraries
     this.uuid = require('./External/uuid/index.js');
@@ -101,7 +90,7 @@ class YSyncer {
   // Reconnect a session or create a new one
   openSession (options) {
     let session = this.getSession(options.id)
-    if(!session || options.wikiName !== session.wikiName || options.authenticatedUsername !== session.authenticatedUsername) {
+    if(!session || options.wikiName !== session.wikiName || options.username !== session.username) {
       if(options.id == this.uuid.NIL) {
         options.id = this.uuid.v4();
       }
@@ -339,15 +328,6 @@ class WSSharedDoc extends Y.Doc {
 class YServer extends YSyncer {
   constructor () {
     super();
-    // Initialise the scriptQueue objects ???
-    this.scriptQueue = {};
-    this.scriptActive = {};
-    this.childproc = false;
-
-    // Initialise the $tw.Yjs.settings object & load the user settings
-    this.settings = $tw.wiki.getTiddlerData('$:/config/joshuafontany/tw5-yjs/WSServer',{});
-    this.loadSettings(this.settings,$tw.boot.wikiPath);
-
     // Users
     this.anonId = 0; // Incremented when an anonymous userid is created
 
@@ -380,10 +360,10 @@ class YServer extends YSyncer {
   /*
     Session methods
   */
-  setAnonUsername (state,session) {
+  getAnonUsername (state) {
     // Query the request state server for the anon username parameter
     let anon = state.server.get("anon-username")
-    session.username = (anon || '') + uniqueNamesGenerator({
+    return (anon || '') + uniqueNamesGenerator({
       dictionaries: [colors, adjectives, animals, names],
       style: 'capital',
       separator: '',
@@ -392,10 +372,10 @@ class YServer extends YSyncer {
     });
   }
 
-  getSessionsByUser (authenticatedUsername) {
+  getSessionsByUser (username) {
     let usersSessions = new Map();
     for (let [id,session] of this.sessions.entries()) {
-      if (session.authenticatedUsername === authenticatedUsername) {
+      if (session.username === username) {
         usersSessions.add(id,session);
       }
     }
@@ -617,132 +597,6 @@ class YServer extends YSyncer {
     })
   }
 
-  /*
-    Settings Methods
-  */
-
-  /*
-    Parse the default settings file and the normal user settings file
-    This function modifies the input settings object with the properties in the
-    json file at newSettingsPath
-  */
-  loadSettings (settings,bootPath) {
-    const newSettingsPath = path.join(bootPath, 'settings', 'settings.json');
-    let newSettings;
-    if (typeof $tw.ExternalServer !== 'undefined') {
-      newSettings = require(path.join(process.cwd(), 'LoadConfig.js')).settings;
-    } else {
-      if ($tw.node && !fs) {
-        const fs = require('fs')
-      }
-      let rawSettings;
-      // try/catch in case defined path is invalid.
-      try {
-        rawSettings = fs.readFileSync(newSettingsPath);
-      } catch (err) {
-        console.log('NodeSettings - No settings file, creating one with default values.');
-        rawSettings = '{}';
-      }
-      // Try to parse the JSON after loading the file.
-      try {
-        newSettings = JSON.parse(rawSettings);
-        console.log('NodeSettings - Parsed raw settings.');
-      } catch (err) {
-        console.log('NodeSettings - Malformed user settings. Using empty default.');
-        console.log('NodeSettings - Check settings. Maybe comma error?');
-        // Create an empty default settings.
-        newSettings = {};
-      }
-    }
-    // Extend the default with the user settings & normalize the wiki objects
-    this.updateSettings(settings, newSettings);
-    // Get the ip address to make it easier for other computers to connect.
-    const ipAddress = require('./External/IP/ip.js').address();
-    settings.serverInfo = {
-      name: settings.serverName,
-      ipAddress: ipAddress,
-      protocol: !!settings["tls-key"] && !!!settings["tls-cert"]? "https": "http",
-      port: settings.port || "8080",
-      host: settings.host || "127.0.0.1"
-    }
-  }
-
-  /*
-    Given a local and a global settings, this returns the global settings but with
-    any properties that are also in the local settings changed to the values given
-    in the local settings.
-    Changes to the settings are later saved to the local settings.
-  */
-  updateSettings (globalSettings,localSettings) {
-    /*
-    Walk though the properties in the localSettings, for each property set the global settings equal to it, 
-    but only for singleton properties. Don't set something like 
-    GlobalSettings.Accelerometer = localSettings.Accelerometer, instead set 
-    GlobalSettings.Accelerometer.Controller = localSettings.Accelerometer.Contorller
-    */
-    let self = this;
-    Object.keys(localSettings).forEach(function (key, index) {
-      if (typeof localSettings[key] === 'object') {
-        if (!globalSettings[key]) {
-          globalSettings[key] = {};
-        }
-        //do this again!
-        self.updateSettings(globalSettings[key], localSettings[key]);
-      } else {
-        globalSettings[key] = localSettings[key];
-      }
-    });
-  }
-
-  /*
-    Creates initial settings tiddlers for the wiki.
-  */
-  createStateTiddlers (data,wiki) {
-    // Create the $:/ServerIP tiddler
-    let pluginTiddlers = {
-      "$:/state/tw5-yjs/ServerIP": {
-        title: "$:/state/tw5-yjs/ServerIP",
-        text: this.settings.serverInfo.ipAddress,
-        protocol: this.settings.serverInfo.protocol,
-        port: this.settings.serverInfo.port,
-        host: this.settings.serverInfo.host
-      }
-    }
-    if (typeof wiki.wikiInfo === 'object') {
-      // Get plugin list
-      const fieldsPluginList = {
-        title: '$:/state/tw5-yjs/ActivePluginList',
-        list: $tw.utils.stringifyList(wiki.wikiInfo.plugins)
-      }
-      pluginTiddlers['$:/state/tw5-yjs/ActivePluginList'] = fieldsPluginList;
-      
-      const fieldsThemesList = {
-        title: '$:/state/tw5-yjs/ActiveThemesList',
-        list: $tw.utils.stringifyList(wiki.wikiInfo.themes)
-      }
-      pluginTiddlers['$:/state/tw5-yjs/ActiveThemesList'] = fieldsThemesList;
-      
-      const fieldsLanguagesList = {
-        title: '$:/state/tw5-yjs/ActiveLanguagesList',
-        list: $tw.utils.stringifyList(wiki.wikiInfo.languages)
-      }
-      pluginTiddlers['$:/state/tw5-yjs/ActiveLanguagesList'] = fieldsLanguagesList;
-    }
-    const message = {
-      type: 'saveTiddler',
-      wiki: data.wiki,
-      tiddler: {
-        fields: {
-          title: "$:/state/tw5-yjs",
-          type: "application/json",
-          "plugin-type": "plugin",
-          text: JSON.stringify({tiddlers: pluginTiddlers}) 
-        }
-      }
-    };
-    //this.getSession(data.sessionId).send(message);
-  }
-
   // Wiki methods
 
   /*
@@ -948,20 +802,6 @@ class YServer extends YSyncer {
           }
         })
         
-        // Setup the FileSystemMonitors
-        /*
-        // Make sure that the tiddlers folder exists
-        const error = $tw.utils.createDirectory($tw.Yjs.Wikis[wikiName].wikiTiddlersPath);
-        if(error){
-          this.logger.error('Error creating wikiTiddlersPath', error, {level:1});
-        }
-        // Recursively build the folder tree structure
-        $tw.Yjs.Wikis[wikiName].FolderTree = buildTree('.', $tw.Yjs.Wikis[wikiName].wikiTiddlersPath, {});
-        if($tw.Yjs.settings.disableFileWatchers !== 'yes') {
-          // Watch the root tiddlers folder for chanegs
-          $tw.Yjs.WatchAllFolders($tw.Yjs.Wikis[wikiName].FolderTree, wikiName);
-        }
-        */
         // Set the wiki as loaded
         this.Wikis.set(wikiName,$y);
         $tw.hooks.invokeHook('wiki-loaded',wikiName);

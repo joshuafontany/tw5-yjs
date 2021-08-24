@@ -35,21 +35,25 @@ MultiServer.prototype.constructor = MultiServer;
 
 MultiServer.prototype.defaultVariables = Server.prototype.defaultVariables;
 
-// This removes all but the root wiki from the routes
-MultiServer.prototype.clearRoutes = function() {
-  // Remove any routes that don't match the root path
-  this.routes = this.routes.filter(function(thisRoute) {
-    return String(thisRoute.path) === String(/^\/$/) || String(thisRoute.path) === String(/^\/favicon.ico$/);
-  });
-  // Remove any added authorizationPrinciples
-  let baseTypes = ["admin","readers","writers"]
-  let clearedPrinciples = {};
-  Object.keys(this.authorizationPrinciples).forEach(function(thisType) {
-    if(baseTypes.indexOf(thisType) !== -1) {
-      clearedPrinciples[thisType] == authorizatonPrinciples[thisTypes];
-    };
-  });
-  this.authorizationPrinciples = clearedPrinciples;
+MultiServer.prototype.isAdmin = function(username) {
+  if(!!username) {
+    return this.isAuthorized("admin",username);
+  } else {
+    return null;
+  }
+}
+
+MultiServer.prototype.getUserAccess = function(username,wikiName) {
+  wikiName = wikiName || 'RootWiki';
+  if(!!username) {
+      let type, accessPath = (wikiName == 'RootWiki')? "" : wikiName+'/';
+      type = (this.isAuthorized(accessPath+"readers",username))? "readers" : null;
+      type = (this.isAuthorized(accessPath+"writers",username))? "writers" : type;
+      type = (this.isAuthorized("admin",username))? "admin" : type;
+      return type;
+  } else {
+    return null;
+  }
 }
 
 MultiServer.prototype.requestHandler = function(request,response,options) {
@@ -70,13 +74,6 @@ MultiServer.prototype.requestHandler = function(request,response,options) {
   Object.getPrototypeOf(MultiServer.prototype).requestHandler.call(this,request,response,options);
 };
 
-/*
-  This function will try the default port, if that port is in use than it will
-  increment port numbers until it finds an unused port.
-  port: optional port number (falls back to value of "port" variable)
-  host: optional host address (falls back to value of "host" variable)
-  prefix: optional prefix (falls back to value of "path-prefix" variable)
-*/
 MultiServer.prototype.listen = function(port,host,prefix) {
   this.httpServer = Server.prototype.listen.call(this,port,host,prefix);
   let self = this;
@@ -142,38 +139,8 @@ MultiServer.prototype.verifyUpgrade = function(request) {
 };
 
 /*
-  Load the server route modules of types: serverroute, wikiroute, fileroute
-*/
-MultiServer.prototype.addAllRoutes = function() {
-  let self = this;
-  // Add route handlers
-  $tw.modules.forEachModuleOfType("serverroute", function(title, routeDefinition) {
-    if(typeof routeDefinition === 'function') {
-      self.addRoute(routeDefinition());
-    } else {
-      self.addRoute(routeDefinition);
-    }
-  });
-  $tw.modules.forEachModuleOfType("wikiroute", function(title, routeDefinition) {
-    if(typeof routeDefinition === 'function') {
-      self.addRoute(routeDefinition('RootWiki'));
-    }
-  });
-  $tw.modules.forEachModuleOfType("fileroute", function(title, routeDefinition) {
-    if(typeof routeDefinition === 'function') {
-      self.addRoute(routeDefinition('RootWiki'));
-      self.addRoute(routeDefinition(''));
-    } else {
-      self.addRoute(routeDefinition);
-    }
-  });
-  this.addWikiRoutes($tw.Yjs.settings.wikis, '');
-};
-
-/*
-  Walk through the $tw.Yjs.settings.wikis object and add a route for each listed wiki. 
-  Log each wiki's authorizationPrincipals as `${wikiName}\readers` & `${wikinName}\writers`.
-  The routes should make the wiki boot if it hasn't already.
+  Log each wiki's authorizationPrincipals as `${wikiName}\readers` & `${wikiName}\writers`.
+  The routes should load the wiki if it hasn't loaded already.
 */
 MultiServer.prototype.addWikiRoutes = function(inputObject,prefix) {
   if(typeof inputObject === 'object') {
@@ -205,18 +172,59 @@ MultiServer.prototype.addWikiRoutes = function(inputObject,prefix) {
       });
       $tw.Yjs.loadWiki(fullName);
       $tw.Yjs.logger.log("Added route " + String(new RegExp('^\/' + fullName + '\/?$')))
-      // recurse!
-      if(!!inputObject[wikiName].wikis) {
-        // This needs to be a new variable or else the rest of the wikis at
-        // this level will get the longer prefix as well.
-        const nextPrefix = (!!prefix)? prefix + '/' + wikiName: wikiName;
-        self.addWikiRoutes(inputObject[wikiName].wikis, nextPrefix);
-      }
     })
   }
 };
 
+// This removes all but the root wiki from the routes
+MultiServer.prototype.clearRoutes = function() {
+  // Remove any routes that don't match the root path
+  this.routes = this.routes.filter(function(thisRoute) {
+    return String(thisRoute.path) === String(/^\/$/) || String(thisRoute.path) === String(/^\/favicon.ico$/);
+  });
+  // Remove any added authorizationPrinciples
+  let baseTypes = ["admin","readers","writers"]
+  let clearedPrinciples = {};
+  Object.keys(this.authorizationPrinciples).forEach(function(thisType) {
+    if(baseTypes.indexOf(thisType) !== -1) {
+      clearedPrinciples[thisType] == authorizatonPrinciples[thisTypes];
+    };
+  });
+  this.authorizationPrinciples = clearedPrinciples;
+}
+
+/*
+  A simple websocket server extending the `ws` library
+  options: 
+*/
+function WebSocketServer(options) {
+  Object.assign(this, new $tw.Yjs.ws.Server(options));
+  // Set the event handlers
+  this.on('listening',this.serverOpened);
+  this.on('close',this.serverClosed);
+  this.on('connection',$tw.Yjs.handleWSConnection);
+}
+
+WebSocketServer.prototype = Object.create(require('./External/ws/ws.js').Server.prototype);
+WebSocketServer.prototype.constructor = WebSocketServer;
+
+WebSocketServer.prototype.defaultVariables = {
+
+};
+
+WebSocketServer.prototype.serverOpened = function() {
+
+}
+
+WebSocketServer.prototype.serverClosed = function() {
+
+}
+
 exports.MultiServer = MultiServer;
+
+exports.WebSocketServer = WebSocketServer;
+
+
 
 }
 })();

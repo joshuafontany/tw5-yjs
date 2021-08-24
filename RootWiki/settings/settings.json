@@ -8,7 +8,7 @@
   "writers": "(authenticated)",
   "username": "",
   "password": "",
-  "credentials": "./credentials.csv",
+  "credentials": "./settings/credentials.csv",
   "tls-key": "",
   "tls-cert": "",
   "tls-passphrase": "",

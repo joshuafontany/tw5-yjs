@@ -100,7 +100,6 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
             url: new $tw.Yjs.url($tw.Yjs.getHost(self.host)),
             doc: self.doc,
             wikiName: $tw.wikiName,
-            authenticatedUsername: json["authenticated_username"],
             username: json.username,
             isAnonymous: self.isAnonymous,
             isLoggedIn: self.isLoggedIn,

@@ -266,7 +266,6 @@ const setupHeartbeat = (session) => {
    * @param {string} [options.wikiName] The "room" name
    * @param {string} [options.username] The display username
    * @param {string} [options.access] The user-session's access level
-   * @param {string} [options.authenticatedUsername] The internal user id
    * @param {boolean} [options.isLoggedIn] The user's login state
    * @param {boolean} [options.isReadOnly] The User-session read-only state
    * @param {boolean} [options.isAnonymous] The User's anon stat
@@ -300,18 +299,19 @@ const setupHeartbeat = (session) => {
     this.lastMessageReceived = 0;
 
     // Config
-    this.access = options.access;
-    this.authenticatedUsername = options.authenticatedUsername;
+
     this.binaryType = options.binaryType || "arraybuffer";
     this.client = !!options.client;
-    this.ip = options.ip;
+    this.wikiName = options.wikiName || $tw.wikiName;
+    this.access = options.access;
+    this.username = options.username;
     this.isAnonymous = options.isAnonymous;
     this.isLoggedIn = options.isLoggedIn;
     this.isReadOnly = options.isReadOnly;
     this.expires = options.expires || time.getUnixTime();
+
+    this.ip = options.ip;
     this.url = options.url;
-    this.username = options.username;
-    this.wikiName = options.wikiName || $tw.wikiName;
     
     if(this.client) {
       let connect = typeof options.connect !== 'undefined' && typeof options.connect !== 'null' ? options.connect : true;
@@ -377,7 +377,6 @@ const setupHeartbeat = (session) => {
   toJSON() {
     return {
       access: this.access,
-      authenticatedUsername: this.authenticatedUsername,
       binaryType: this.binaryType,
       client: this.client,
       id: this.id,
@@ -464,14 +463,12 @@ const setupHeartbeat = (session) => {
         /**
          * Y Messages are encoded as:
          * this.id {string}
-         * this.authenticatedUsername {string}
          * this.wikiName {string}
          * docname {null|string}
          * message {BinaryEncoder}
         */
         let encoder = encoding.createEncoder();
         encoding.writeVarString(encoder,this.id);
-        encoding.writeVarString(encoder,this.authenticatedUsername);
         encoding.writeVarString(encoder,this.wikiName);
         encoding.writeAny(encoder,docname);
         encoding.writeBinaryEncoder(encoder,message);
@@ -492,7 +489,6 @@ const setupHeartbeat = (session) => {
     let decoder = decoding.createDecoder(message);
     let authed = (
       decoding.readVarString(decoder) == this.id
-      && decoding.readVarString(decoder) == this.authenticatedUsername
       && decoding.readVarString(decoder) == this.wikiName
     );
     if(!authed) {

@@ -27,25 +27,20 @@ exports.handler = function(request,response,state) {
       let session = $tw.Yjs.openSession({
         id: state.queryParameters["session"],
         wikiName: state.queryParameters["wiki"],
-        authenticatedUsername: state.authenticatedUsername,
-        username: state.authenticatedUsername,
-        access: $tw.Yjs.wsServer.getUserAccess((!state.authenticatedUsername)? null: state.authenticatedUsername,state.queryParameters["wiki"]),
-        isLoggedIn: !!state.authenticatedUsername,
+        username: state.authenticatedUsername || $tw.Yjs.getAnonUsername(state),
         isReadOnly: !state.server.isAuthorized("writers",state.authenticatedUsername),
         isAnonymous: !state.authenticatedUsername,
+        isLoggedIn: !!state.authenticatedUsername,
+        access: $tw.Yjs.wsServer.getUserAccess((!state.authenticatedUsername)? null: state.authenticatedUsername,state.queryParameters["wiki"]),
         doc: $tw.Yjs.getYDoc(state.queryParameters["wiki"]),
         client: false,
         connect: false,
         url: state.urlInfo,
         ip: conectionIp
       });
-    if(session.isAnonymous && !session.username) {
-      $tw.Yjs.setAnonUsername(state,session);
-    }
     // Set a login window for 60 seconds.
     $tw.Yjs.refreshSession(session,1000*60)
     let text = {
-      authenticated_username: session.authenticatedUsername,
       username: session.username,
       anonymous: session.isAnonymous,
       read_only: session.isReadOnly,

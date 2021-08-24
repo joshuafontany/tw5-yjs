@@ -1,4 +1,4 @@
-title: $:/config/joshuafontany/tw5-yjs/WSServer
+title: $:/config/joshuafontany/tw5-yjs/MultiServer
 
 {
   "servername": "Yjs.wiki",
@@ -21,19 +21,5 @@ title: $:/config/joshuafontany/tw5-yjs/WSServer
   "system-tiddler-render-template": "$:/core/templates/wikified-tiddler",
   "system-tiddler-render-type": "text/plain",
   "tiddler-render-template": "$:/core/templates/server/static.tiddler.html",
-  "tiddler-render-type": "text/html",
-
-  "basePath": "cwd",
-  "wikisPath": "./Wikis",
-
-  "disableFileWatchers": "no",
-  "suppressBrowser": false,
-
-  "scripts": {
-    "NewWiki": "tiddlywiki #wikiName --init #editionName"
-  },
-
-  "wikis": {
-
-  }
+  "tiddler-render-type": "text/html"
 }
