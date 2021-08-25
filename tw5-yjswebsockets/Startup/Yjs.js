@@ -603,8 +603,7 @@ class YServer extends YSyncer {
     This function loads a tiddlywiki wiki and calls any callback.
   */
   loadWiki (wikiName,cb) {
-    const settings = this.getWikiSettings(wikiName);
-    let wikiPath = this.wikiExists(settings.path),
+    let wikiPath = this.wikiExists(wikiName),
       error = null;
     // Make sure it isn't loaded already
     if(!!wikiPath && !this.Wikis.has(wikiName)) {
@@ -1021,29 +1020,6 @@ class YServer extends YSyncer {
       wikiPath = path.resolve(basePath, this.settings.wikisPath, wikiPath);
     }
     return wikiPath;
-  }
-
-  /*
-    Given a wiki name this gets the wiki settings object if one is listed, 
-    if the wiki isn't listed this returns undefined.
-    This can be used to determine if a wiki is listed or not.
-  */
-  getWikiSettings (wikiName) {
-    let wikiSettings = undefined;
-    if (wikiName == 'RootWiki') {
-      wikiSettings = {
-        path: path.resolve($tw.boot.wikiPath),
-        admin: this.settings.admin,
-        readers: this.settings.readers,
-        writers: this.settings.writers,
-      }
-    } else if (typeof this.settings.wikis[wikiName] === 'object') {
-      wikiSettings = this.settings.wikis[wikiName];
-      wikiSettings.admin = this.settings.admin,
-      wikiSettings.readers = wikiSettings.readers || this.settings.readers,
-      wikiSettings.writers = wikiSettings.writers || this.settings.writers
-    }
-    return wikiSettings;
   }
 
   /*

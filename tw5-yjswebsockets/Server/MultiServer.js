@@ -67,7 +67,7 @@ MultiServer.prototype.requestHandler = function(request,response,options) {
     })
     response.end()
     return
-  }
+  }debugger;
   // Compose the options object
   options.wiki = $tw.Yjs.Wikis.get(options.wikiName);;
   // Call the parent method
