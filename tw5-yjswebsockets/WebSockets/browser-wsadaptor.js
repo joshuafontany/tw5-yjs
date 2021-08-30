@@ -11,7 +11,8 @@ A sync adaptor for syncing changes from/to a browser using Yjs websockets
 /*global $tw: false */
 "use strict";
 
-const Y = require('./yjs.cjs'),
+const Yjs = new require('./Yjs.js'),
+  Y = require('./yjs.cjs'),
   CONFIG_HOST_TIDDLER = "$:/config/tw5-yjs/host",
   DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
 
@@ -24,6 +25,8 @@ function WebsocketAdaptor(options) {
   this.isAnonymous = true;
   this.sessionId = window.sessionStorage.getItem("ws-adaptor-session") || $tw.Yjs.uuid.NIL;
   this.session = null;
+  // Initialise Yjs in the browser
+  $tw.Yjs = $tw.Yjs || new Yjs.YSyncer();
   this.doc = $tw.Yjs.getYDoc($tw.wikiName);
   this.logger = new $tw.utils.Logger("browser-wsadaptor");
 }
