@@ -1,5 +1,5 @@
 /*\
-title: $:/core/modules/server/routes/get-status.js
+title: $:/plugins/joshuafontany/tw5-yjs/server/routes/get-status.js
 type: application/javascript
 module-type: route
 

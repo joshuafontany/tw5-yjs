@@ -21,14 +21,10 @@ const Yjs = new require('./Yjs.js');
 
 exports.startup = function() {
   if ($tw.browser) {
-      // Initialise Yjs in the browser
-      $tw.Yjs = new Yjs.YSyncer();
-      // Load the Wiki
-      $tw.Yjs.loadWiki();
+    // Initialise Yjs in the browser
+    $tw.Yjs = new Yjs.YSyncer();
   } else {
     // Initialise Yjs on node
     $tw.Yjs = new Yjs.YServer();
-    // Load the RootWiki
-    $tw.Yjs.loadWiki("RootWiki");
   }
 }

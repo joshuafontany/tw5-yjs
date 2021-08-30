@@ -1,9 +1,9 @@
 /*\
-title: $:/plugins/joshuafontany/tw5-yjs/WSAdaptor.js
+title: $:/plugins/joshuafontany/tw5-yjs/browser-wsadaptor.js
 type: application/javascript
 module-type: syncadaptor
 
-A sync adaptor for syncing changes using websockets with Yjs
+A sync adaptor for syncing changes from/to a browser using Yjs websockets
 
 \*/
 
@@ -16,7 +16,6 @@ const Y = require('./yjs.cjs'),
   DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
 
 function WebsocketAdaptor(options) {
-  this.logger = new $tw.utils.Logger("browser-wsadaptor");
   this.wiki = options.wiki;
   this.host = this.getHost();
   this.hasStatus = false;
@@ -26,13 +25,14 @@ function WebsocketAdaptor(options) {
   this.sessionId = window.sessionStorage.getItem("ws-adaptor-session") || $tw.Yjs.uuid.NIL;
   this.session = null;
   this.doc = $tw.Yjs.getYDoc($tw.wikiName);
+  this.logger = new $tw.utils.Logger("browser-wsadaptor");
 }
 
 // Syncadaptor properties
 
 // REQUIRED
 // The name of the syncadaptor
-WebsocketAdaptor.prototype.name = "wsadaptor";
+WebsocketAdaptor.prototype.name = "browser-wsadaptor";
 
 WebsocketAdaptor.prototype.supportsLazyLoading = false;
 

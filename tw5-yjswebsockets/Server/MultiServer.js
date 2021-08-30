@@ -1,11 +1,10 @@
 /*\
-title: $:/plugins/joshuafontany/tw5-yjs/MultiServer.js
+title: $:/plugins/joshuafontany/tw5-yjs/server/multiserver.js
 type: application/javascript
 module-type: library
 
 
 \*/
-(function(){
 
 /*jslint node: true, browser: true */
 /*global $tw: false */
@@ -26,8 +25,11 @@ function MultiServer(options) {
   // Initialise admin authorization principles
 	var authorizedUserName = (this.get("username") && this.get("password")) ? this.get("username") : null;
   this.authorizationPrincipals['admin'] = (this.get("admin") || authorizedUserName).split(',').map($tw.utils.trim);
-  // Add all the routes, this also adds authorization priciples for each wiki
-  //this.addAllRoutes();
+  // Save the root path prefix
+  $tw.wikiName = "RootWiki";
+	$tw.pathPrefix = this.get("path-prefix") || "";
+  // Add all the routes, this also loads and adds authorization priciples for each wiki
+  this.addWikiRoutes($tw.pathPrefix);
 }
 
 MultiServer.prototype = Object.create(Server.prototype);
@@ -68,8 +70,10 @@ MultiServer.prototype.requestHandler = function(request,response,options) {
     response.end()
     return
   }debugger;
+  // Check for a wikiState pathPrefix
+  let regex = new RegExp(`^${$tw.pathPrefix}/wikis/(.+)$`), wikiName = regex.exec(request.urlInfo) || "RootWiki";
   // Compose the options object
-  options.wiki = $tw.Yjs.Wikis.get(options.wikiName);;
+  options = $tw.utils.getWikiState(wikiName);
   // Call the parent method
   Object.getPrototypeOf(MultiServer.prototype).requestHandler.call(this,request,response,options);
 };
@@ -142,56 +146,27 @@ MultiServer.prototype.verifyUpgrade = function(request) {
   Log each wiki's authorizationPrincipals as `${wikiName}\readers` & `${wikiName}\writers`.
   The routes should load the wiki if it hasn't loaded already.
 */
-MultiServer.prototype.addWikiRoutes = function(inputObject,prefix) {
-  if(typeof inputObject === 'object') {
-    let self = this,
-      readers = this.authorizationPrincipals[(prefix)? prefix+"/readers": "readers"],
-      writers = this.authorizationPrincipals[(prefix)? prefix+"/writers": "writers"],
-      wikis = Object.keys(inputObject);
-    wikis.forEach(function(wikiName) {
-      let fullName = (!!prefix)? prefix + '/' + wikiName: wikiName;
-      // Add the authorized principles
-      if(!!inputObject[wikiName].readers) {
-        readers = inputObject[wikiName].readers.split(',').map($tw.utils.trim);
+MultiServer.prototype.addWikiRoutes = function(prefix) {
+  let self = this,
+      readers = this.authorizationPrincipals["readers"],
+      writers = this.authorizationPrincipals["writers"];
+  $tw.utils.each($tw.boot.wikiInfo.serveWikis,function(serveInfo) {
+    let state = $tw.utils.loadWikiState(serveInfo,$tw.pathPrefix);
+    if (state) {
+      // Add the authorized principal over-rides
+      if(!!serveInfo.readers) {
+        readers = serveInfo.readers.split(',').map($tw.utils.trim);
       }
-      if(!!inputObject[wikiName].writers) {
-        writers = inputObject[wikiName].writers.split(',').map($tw.utils.trim);
+      if(!!serveInfo.writers) {
+        writers = serveInfo.writers.split(',').map($tw.utils.trim);
       }
-      self.authorizationPrincipals[fullName+"/readers"] = readers;
-      self.authorizationPrincipals[fullName+"/writers"] = writers;
+      self.authorizationPrincipals[state.pathPrefix+"/readers"] = readers;
+      self.authorizationPrincipals[state.pathPrefix+"/writers"] = writers;
       // Setup the routes
-      $tw.modules.forEachModuleOfType("wikiroute", function(title, routeDefinition) {
-        if(typeof routeDefinition === 'function') {
-          self.addRoute(routeDefinition(fullName));
-        }
-      });
-      $tw.modules.forEachModuleOfType("fileroute", function(title, routeDefinition) {
-        if(typeof routeDefinition === 'function') {
-          self.addRoute(routeDefinition(fullName));
-        }
-      });
-      $tw.Yjs.loadWiki(fullName);
-      $tw.Yjs.logger.log("Added route " + String(new RegExp('^\/' + fullName + '\/?$')))
-    })
-  }
+      this.logger.log("Added route " + String(new RegExp('^\/' + fullName + '\/?$')))
+    }
+  });
 };
-
-// This removes all but the root wiki from the routes
-MultiServer.prototype.clearRoutes = function() {
-  // Remove any routes that don't match the root path
-  this.routes = this.routes.filter(function(thisRoute) {
-    return String(thisRoute.path) === String(/^\/$/) || String(thisRoute.path) === String(/^\/favicon.ico$/);
-  });
-  // Remove any added authorizationPrinciples
-  let baseTypes = ["admin","readers","writers"]
-  let clearedPrinciples = {};
-  Object.keys(this.authorizationPrinciples).forEach(function(thisType) {
-    if(baseTypes.indexOf(thisType) !== -1) {
-      clearedPrinciples[thisType] == authorizatonPrinciples[thisTypes];
-    };
-  });
-  this.authorizationPrinciples = clearedPrinciples;
-}
 
 /*
   A simple websocket server extending the `ws` library
@@ -205,7 +180,7 @@ function WebSocketServer(options) {
   this.on('connection',$tw.Yjs.handleWSConnection);
 }
 
-WebSocketServer.prototype = Object.create(require('./External/ws/ws.js').Server.prototype);
+WebSocketServer.prototype = Object.create(require('../External/ws/ws.js').Server.prototype);
 WebSocketServer.prototype.constructor = WebSocketServer;
 
 WebSocketServer.prototype.defaultVariables = {
@@ -224,7 +199,4 @@ exports.MultiServer = MultiServer;
 
 exports.WebSocketServer = WebSocketServer;
 
-
-
 }
-})();

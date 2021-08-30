@@ -45,8 +45,8 @@
         "module-type": "library",
         "type": "application/javascript",
         "text": {
-          "prefix": "(function(){\nif($tw.node){",
-          "suffix": "}\n})();"
+          "prefix": "if($tw.node){",
+          "suffix": "}"
         }
       }
     }

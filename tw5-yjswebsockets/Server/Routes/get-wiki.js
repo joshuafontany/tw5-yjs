@@ -1,5 +1,5 @@
 /*\
-title: $:/core/modules/server/routes/get-wiki.js
+title: $:/plugins/joshuafontany/tw5-yjs/server/routes/get-wiki.js
 type: application/javascript
 module-type: route
 
@@ -18,11 +18,7 @@ exports.path = /^\/wikis\/(.+)$/;
 
 exports.handler = function(request,response,state) {
 	var path = require("path"),
-		fs = require("fs"),
-		util = require("util"),
-		wikiName = decodeURIComponent(state.params[0]),
-		filename = path.resolve(state.boot.wikiPath,"files",wikiName),
-		extension = path.extname(filename);
+		wikiName = $tw.utils.decodeURIComponentSafe(state.params[0]);
 	debugger;
 	if (wikiName == "RootWiki") {
 		// Redirect to the root wiki
@@ -31,24 +27,20 @@ exports.handler = function(request,response,state) {
 		});
 		response.end();
 	} else {
-		
+		$tw.utils.loadWiki(wikiName,function(err,wikiPath) {
+			var status,text,type = "text/plain";
+			if(err) {
+				$tw.Yjs.logger.log("Error accessing wiki " + wikiName + ": " + err.toString());
+				status = 404;
+				text = "Wiki '" + wikiName + "' not found";
+			} else {
+				status = 200;
+				text = state.wiki.renderTiddler(state.server.get("root-render-type"),state.server.get("root-tiddler"));
+				type = state.server.get("root-serve-type");
+			}
+			state.sendResponse(status,{"Content-Type": type},text);
+		});
 	}
-
-
-
-	$tw.Yjs.loadWiki(wikiRoute,function(err,text) {
-		var status,text,type = "text/plain";
-		if(err) {
-			console.log("Error accessing file " + filename + ": " + err.toString());
-			status = 404;
-			text = "Wiki '" + wikiName + "' not found";
-		} else {
-			status = 200;
-			text = state.wiki.renderTiddler(state.server.get("root-render-type"),state.server.get("root-tiddler"));
-			type = state.server.get("root-serve-type");
-		}
-		state.sendResponse(status,{"Content-Type": type},text);
-	});
 };
 
 }());

@@ -6,7 +6,6 @@ module-type: command
 Serve tiddlers using a two-way websocket server over http
 
 \*/
-(function(){
 
 /*jslint node: true, browser: true */
 /*global $tw: false */
@@ -21,8 +20,8 @@ exports.info = {
 
 exports.platforms = ["node"];
 
-const MultiServer = require('../MultiServer.js').MultiServer,
-  WebSocketServer = require('../MultiServer.js').WebSocketServer;
+const MultiServer = require('../server/multiserver.js').MultiServer,
+  WebSocketServer = require('../server/multiserver.js').WebSocketServer;
 
 const Command = function(params,commander,callback) {
   this.params = params;
@@ -68,5 +67,3 @@ Command.prototype.execute = function() {
 };
 
 exports.Command = Command;
-
-})();

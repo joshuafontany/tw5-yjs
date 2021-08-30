@@ -1,5 +1,5 @@
 /*\
-title: $:/core/modules/server/routes/logout.js
+title: $:/plugins/joshuafontany/tw5-yjs/server/routes/logout.js
 type: application/javascript
 module-type: route
 
