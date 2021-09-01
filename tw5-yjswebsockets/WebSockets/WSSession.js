@@ -1,5 +1,5 @@
 /*\
-title: $:/plugins/joshuafontany/tw5-yjs/WSSession.js
+title: $:/plugins/joshuafontany/tw5-yjs/wssession.js
 type: application/javascript
 module-type: library
 
@@ -19,6 +19,7 @@ Unlike stated in the LICENSE file, it is not necessary to include the copyright 
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
+const WS = $tw.node? require('./external/ws/ws.js'): WebSocket;
 require('./yjs.cjs');
 const syncProtocol = require('./sync.cjs');
 const authProtocol = require('./auth.cjs');
@@ -69,11 +70,11 @@ messageHandlers[messageHandshake] = (encoder, decoder, session, doc, emitSynced,
   let handshakeData = JSON.parse(decoding.readVarString(decoder));
   // Set the session expiration
   session.expires = handshakeData.expires;
-  session.settings = $tw.wiki.getTiddlerData("$:/config/joshuafontany/tw5-yjs/WSSession",{});
+  session.settings = $tw.wiki.getTiddlerData("$:/config/joshuafontany/tw5-yjs/wssession",{});
   // Start a heartbeat
   session.heartbeat();
   // Start a sync
-  console.log(`['${session.id}'] Client Handshake`);
+  $tw.utils.log(`['${session.id}'] Client Handshake`);
   // send sync step 1
   const encoderSync = encoding.createEncoder()
   encoding.writeVarUint(encoderSync, messageSync)
@@ -109,7 +110,7 @@ messageHandlers[messageHeartbeat] = (encoder, decoder, session, doc, emitSynced,
  * @param {WebsocketSession} session
  * @param {string} reason
  */
-const permissionDeniedHandler = (session, reason) => console.warn(`[${session.id}] Permission denied to access ${session.url}.\n${reason}`);
+const permissionDeniedHandler = (session, reason) => $tw.utils.warning(`[${session.id}] Permission denied to access ${session.url}.\n${reason}`);
 
 /**
  * @param {WebsocketSession} session
@@ -124,7 +125,7 @@ const setupWS = (session) => {
     /**
      * @type {WebSocket}
      */
-    const websocket = new $tw.Yjs.ws(session.url.href);
+    const websocket = new WS(session.url.href);
     websocket.binaryType = session.binaryType || 'arraybuffer';
     session.ws = websocket;
     session.connecting = true;
@@ -148,13 +149,13 @@ const setupWS = (session) => {
         if (/** @type {any} */ (messageHandler)) {
           messageHandler(encoder, decoder, session, eventDoc, true, messageType);
         } else {
-          console.error(`['${session.id}'] Unable to compute message, ydoc ${message.doc}`);
+          $tw.utils.error(`['${session.id}'] Unable to compute message, ydoc ${message.doc}`);
         }
         if (encoding.length(encoder) > 1) {
           session.send(encoder,eventDoc.name);
         }
       } else {
-        console.error(`['${session.id}'] Unable to parse message:`, event);
+        $tw.utils.error(`['${session.id}'] Unable to parse message:`, event);
         // send messageAuth denied
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, messageAuth);
@@ -164,7 +165,7 @@ const setupWS = (session) => {
       }
     };
     websocket.onclose = event => {
-      console.log(`['${session.id}'] Closed socket ${websocket.url}`);
+      $tw.utils.log(`['${session.id}'] Closed socket ${websocket.url}`);
       // Clear the ping timers
       clearTimeout(session.pingTimeout);
       clearTimeout(session.ping);
@@ -209,7 +210,7 @@ const setupWS = (session) => {
       },session]);
     }
     websocket.onopen = () => {
-      console.log(`['${session.id}'] Opened socket ${websocket.url}`);
+      $tw.utils.log(`['${session.id}'] Opened socket ${websocket.url}`);
       // Reset connection state
       session.connecting = false;
       session.connected = true;
@@ -271,14 +272,14 @@ const setupHeartbeat = (session) => {
    * @param {boolean} [options.isAnonymous] The User's anon stat
    */
   constructor (options) {
-    if (!options.id || !$tw.Yjs.uuid.validate(options.id) || options.id == $tw.Yjs.uuid.NIL) {
+    if (!options.id || !$tw.utils.uuid.validate(options.id) || options.id == $tw.utils.uuid.NIL) {
       throw new Error("WebsocketSession Error: invalid options.id provided in constructor.")
     }
     if (options.client && !options.doc) {
       throw new Error("WebsocketSession Error: no options.doc provided in constructor.")
     }
     super();
-    this.id = options.id;  // Required $tw.Yjs.uuid.v4()
+    this.id = options.id;  // Required $tw.utils.uuid.v4()
     this.doc = null;
     this.awareness = null;
 
@@ -320,7 +321,7 @@ const setupHeartbeat = (session) => {
        * @type {boolean}
        */
       this.shouldConnect = connect;
-      this.settings = $tw.wiki.getTiddlerData("$:/config/joshuafontany/tw5-yjs/WSSession",{});
+      this.settings = $tw.wiki.getTiddlerData("$:/config/joshuafontany/tw5-yjs/wssession",{});
       this.doc = options.doc; // Required Y.doc reference
       let awareness = options.awareness || new awarenessProtocol.Awareness(options.doc); // Y.doc awareness
 
@@ -429,7 +430,7 @@ const setupHeartbeat = (session) => {
 
   connect () {
     if(!this.client || !this.url) {
-      console.error(`['${this.id}'] WSSession connect error: no client url`)
+      $tw.utils.error(`['${this.id}'] Websocket Session connect error: no client url`)
       return;
     }
     this.shouldConnect = true;
@@ -492,11 +493,11 @@ const setupHeartbeat = (session) => {
       && decoding.readVarString(decoder) == this.wikiName
     );
     if(!authed) {
-      console.error(`['${this.id}'] WS authentication error`);
+      $tw.utils.error(`['${this.id}'] WS authentication error`);
     }
     let expired = time.getUnixTime() > this.expires;
     if(expired) {
-      console.error(`['${this.id}'] WS session expired`);
+      $tw.utils.error(`['${this.id}'] WS session expired`);
     }
     return authed && !expired? decoder : null;
   }

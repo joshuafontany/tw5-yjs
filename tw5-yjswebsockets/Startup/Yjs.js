@@ -11,7 +11,7 @@ A core prototype to hand everything else onto.
 /*global $tw: false */
 "use strict";
 
-const WebsocketSession = require('./WSSession.js').WebsocketSession;
+const WebsocketSession = require('./wssession.js').WebsocketSession;
 const Y = require('./yjs.cjs');
 const syncProtocol = require('./sync.cjs');
 const authProtocol = require('./auth.cjs');
@@ -22,7 +22,7 @@ const decoding = require('./lib0/dist/decoding.cjs');
 const mutex = require('./lib0/dist/mutex.cjs');
 const map = require('./lib0/dist/map.cjs');
 const observable_js = require('./lib0/dist/observable.cjs');
-const { uniqueNamesGenerator, adjectives, colors, animals, names } = require('./External/unique-names-generator/dist/index.js');
+const { uniqueNamesGenerator, adjectives, colors, animals, names } = require('./external/unique-names-generator/dist/index.js');
 
 // Polyfill because IE uses old javascript
 if(!String.prototype.startsWith) {
@@ -49,16 +49,6 @@ class YSyncer {
 
     // Sessions
     this.sessions = new Map();
-
-    // Setup external libraries
-    this.uuid = require('./External/uuid/index.js');
-    if($tw.node){
-      this.ws = require('./External/ws/ws.js');
-      this.url = require('url').URL;
-    } else if($tw.browser) {
-      this.ws = WebSocket;
-      this.url = URL;
-    }
   }
 
   /*
@@ -116,7 +106,7 @@ class YSyncer {
 
   loadWiki (wikiName = $tw.wiki.getTiddlerText("$:/status/WikiName", $tw.wiki.getTiddlerText("$:/SiteTitle", "")),cb) { 
     let error = null;
-    if(!!wikiName && !$tw.wikiStates.has(wikiName)) {
+    if(!!wikiName && !$tw.states.has(wikiName)) {
       try{
         // Set the name for this wiki for websocket messages
         $tw.wikiName = wikiName;
@@ -182,7 +172,7 @@ class YSyncer {
         });
 
         // Set this wiki as loaded
-        $tw.wikiStates.set($tw.wikiName,$tw);
+        $tw.states.set($tw.wikiName,$tw);
         $tw.hooks.invokeHook('wiki-loaded',wikiName);
       } catch (err) {
         console.error(err);
@@ -257,7 +247,7 @@ const messageHeartbeat = 5;
 
 /**
  * @param {Uint8Array} update
- * @param {WSSession} origin
+ * @param {wssession} origin
  * @param {WSSharedDoc} doc
  */
 const updateHandler = (update, origin, doc) => {
@@ -396,7 +386,7 @@ class YServer extends YSyncer {
    * @param {$tw server state} state
     This function handles incomming connections from client sessions.
     It can support multiple client sessions, each with a unique sessionId.
-    Session objects are defined in $:/plugins/joshuafontany/tw5-yjs/WSSession.js
+    Session objects are defined in $:/plugins/joshuafontany/tw5-yjs/wssession.js
   */
   handleWSConnection (socket,request,state) {
     if($tw.Yjs.hasSession(state.sessionId)) {

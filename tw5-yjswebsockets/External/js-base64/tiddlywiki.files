@@ -4,7 +4,7 @@
       "file": "base64.js",
       "fields": {
         "type": "application/javascript",
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/js-base64/base64.js",
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/js-base64/base64.js",
         "module-type": "library"
       }
     },
@@ -12,7 +12,7 @@
       "file": "README.md",
       "fields": {
         "type": "text/plain",
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/js-base64/README"
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/js-base64/README"
       }
     }
   ]

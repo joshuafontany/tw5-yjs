@@ -25,7 +25,7 @@ exports.handler = function(request,response,state) {
       conectionIp = request.headers['x-forwarded-for'] ? request.headers['x-forwarded-for'].split(/\s*,\s*/)[0]:
         request.connection.remoteAddress,
       session = $tw.Yjs.getSession(sessionId);
-    $tw.Yjs.logger.log(`['${sessionId}'] POST ${state.urlInfo.href} (${conectionIp})`);
+    $tw.utils.log(`['${sessionId}'] POST ${state.urlInfo.href} (${conectionIp})`);
     if(session && session.id == state.queryParameters["session"] && session.wikiName == state.queryParameters["wiki"] ) {
         $tw.Yjs.deleteSession(sessionId);
     }

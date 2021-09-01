@@ -4,7 +4,7 @@
       "file": "index.js",
       "fields": {
         "type": "application/javascript",
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/followRedirects/followRedirects.js",
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/followRedirects/followRedirects.js",
         "module-type": "library"
       }
     },
@@ -12,21 +12,21 @@
       "file": "README.md",
       "fields": {
         "type": "text/plain",
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/followRedirects/README.tid"
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/followRedirects/README.tid"
       }
     },
     {
       "file": "LICENSE",
       "fields": {
         "type": "text/plain",
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/followRedirects/LICENSE.tid"
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/followRedirects/LICENSE.tid"
       }
     },
     {
       "file": "note.tid",
       "fields": {
         "type": "text/plain",
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/followRedirects/notes.tid"
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/followRedirects/notes.tid"
       }
     }
 

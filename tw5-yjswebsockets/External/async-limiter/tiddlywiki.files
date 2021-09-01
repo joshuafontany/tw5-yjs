@@ -4,7 +4,7 @@
       "file": "index.js",
       "fields": {
         "type": "application/javascript",
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/async-limiter/async-limiter.js",
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/async-limiter/async-limiter.js",
         "module-type": "library"
       }
     },
@@ -12,14 +12,14 @@
       "file": "readme.md",
       "fields": {
         "type": "text/plain",
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/async-limiter/README"
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/async-limiter/README"
       }
     },
     {
       "file": "LICENSE",
       "fields": {
         "type": "text/plain",
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/async-limiter/LICENSE"
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/async-limiter/LICENSE"
       }
     }
   ]

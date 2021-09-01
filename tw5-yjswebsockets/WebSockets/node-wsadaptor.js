@@ -56,7 +56,7 @@ function WebsocketAdaptor(options) {
 			if (event.target == event.currentTarget) {
 			// A tiddler was added
 			event.changes.added.forEach(added => {
-				console.log(added.content.type.toJSON());
+				$tw.utils.log(added.content.type.toJSON());
 				let title = added.content.type.get('title');
 				if(targets.indexOf(title) == -1) {
 				targets.push(title);
@@ -64,7 +64,7 @@ function WebsocketAdaptor(options) {
 			});
 			} else {
 			// A tiddler was modified
-			console.log(event.target.toJSON());
+			$tw.utils.log(event.target.toJSON());
 			let title = event.target.get("title");
 			if(targets.indexOf(title) == -1) {
 				targets.push(title);
@@ -72,7 +72,7 @@ function WebsocketAdaptor(options) {
 			}
 		});
 		targets.forEach((title) => {
-			console.log(`['${transaction.origin}'] Updating tiddler: ${title}`);
+			$tw.utils.log(`['${transaction.origin}'] Updating tiddler: ${title}`);
 			stashTiddler(title);
 		})
 		}
@@ -82,7 +82,7 @@ function WebsocketAdaptor(options) {
 		event.delta.forEach(delta => {
 			if(delta.insert) {
 			delta.insert.forEach(item => {
-				console.log(`['${transaction.origin}'] Deleting tiddler: ${item}`);
+				$tw.utils.log(`['${transaction.origin}'] Deleting tiddler: ${item}`);
 				// A tiddler was deleted
 				state.wiki.deleteTiddler(item)
 			});
@@ -281,5 +281,5 @@ WebsocketAdaptor.prototype.deleteTiddler = function(title,callback,options) {
 };
 
 if(fs) {
-	exports.adaptorClass = WebsocketAdaptor;
+	//exports.adaptorClass = WebsocketAdaptor;
 }

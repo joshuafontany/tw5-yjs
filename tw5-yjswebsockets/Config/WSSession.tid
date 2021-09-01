@@ -1,4 +1,4 @@
-title: $:/config/joshuafontany/tw5-yjs/WSSession
+title: $:/config/joshuafontany/tw5-yjs/wssession
 type: application/json
 note-heartbeat: Settings for the `heartbeat` that makes sure the browser and server are still connected (mostly in the browser, but also if acting as a federated client). You can almost certainly ignore these settings.
 note-heartbeat-interval: The heartbeat message is sent every `interval` milliseconds (1000 milliseconds = 1 second). Defaults to 1 second.

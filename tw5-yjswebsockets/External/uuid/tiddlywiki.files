@@ -3,7 +3,7 @@
     {
       "file": "LICENSE.md",
       "fields": {
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/uuid/LICENSE",
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/uuid/LICENSE",
         "type": "text/markdown",
         "source": "https://www.npmjs.com/package/uuid"
       }
@@ -11,7 +11,7 @@
         {
       "file": "README.md",
       "fields": {
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/uuid/README",
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/uuid/README",
         "type": "text/markdown",
         "source": "https://www.npmjs.com/package/uuid"
       }
@@ -26,7 +26,7 @@
       "fields": {
         "title": {
           "source": "filename",
-          "prefix": "$:/plugins/joshuafontany/tw5-yjs/External/uuid/"
+          "prefix": "$:/plugins/joshuafontany/tw5-yjs/external/uuid/"
         },
         "module-type": "library",
         "type": "application/javascript"
@@ -40,7 +40,7 @@
       "fields": {
         "title": {
           "source": "filename",
-          "prefix": "$:/plugins/joshuafontany/tw5-yjs/External/uuid/"
+          "prefix": "$:/plugins/joshuafontany/tw5-yjs/external/uuid/"
         },
         "module-type": "library",
         "type": "application/javascript",

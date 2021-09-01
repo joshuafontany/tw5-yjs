@@ -1,5 +1,5 @@
 /*\
-title: $:/plugins/joshuafontany/tw5-yjs/utils/utils-node.js
+title: $:/plugins/joshuafontany/tw5-yjs/utils-node.js
 type: application/javascript
 module-type: utils-node
 
@@ -11,61 +11,75 @@ Various static utility functions.
 /*global $tw: false */
 "use strict";
 
-const path = require('path');
+const fs = require('fs'),
+    path = require('path'),
+    widget = require("$:/core/modules/widgets/widget.js");;
 
-// Wikis map
-$tw.wikiStates = new Map();
+// Setup external libraries
 
-// Multi-Wiki methods
+exports.uuid = require('./external/uuid/index.js');
 
-/*
-    This checks to make sure there is a tiddlwiki.info file in a wiki folder,
-    or a readable file at the given wikiPath. It does not check if they are valid.
-*/
-exports.wikiExists = function(wikiPath) {
-    let exists = false, wikiStats = undefined;
-    // Make sure that the wiki actually exists
-    wikiStats = fs.statSync(wikiPath,{throwIfNoEntry: false});
-    if (wikiStats) {
-        exists = wikiStats.isFile() || fs.existsSync(path.resolve(wikiPath,$tw.config.wikiInfo));
-    }
-    return exists;
-};
+// Multi Wiki methods
 
 /*
     This function loads a wiki into a named state object.
 */
-exports.loadWikiState = function(serveInfo,prefix) {
+exports.loadWikiState = function(serveInfo,pathPrefix,wikisPrefix) {
     let state = null,
-        wikiName = typeof serveInfo === "string"? path.basename(serveInfo,path.extname(serveInfo) || ".html"): serveInfo.name,
-        wikiPath = typeof serveInfo === "string"? serveInfo: serveInfo.path;
+        wikiName = typeof serveInfo === "string"? serveInfo: serveInfo.name,
+        wikiPath = wikiName == "RootWiki"? null: $tw.findLibraryItem(
+            typeof serveInfo === "string"? serveInfo: serveInfo.path,
+            $tw.getLibraryItemSearchPaths($tw.config.editionsPath,$tw.config.editionsEnvVar)
+        );
     // Make sure it isn't loaded already
-    if(!$tw.wikiStates.has(wikiName) && $tw.utils.wikiExists(wikiPath)) {
+    if(wikiPath && !$tw.utils.hasWikiState(wikiName)) {
         try {
             //setup the tiddlywiki state instance
-            state = {boot: null, pathPrefix: null, wiki: null};
-            //Create new Wiki objects
-            state.boot = {wikiPath: wikiPath};
-            state.pathPrefix = prefix + "/wikis/" + encodeURIComponent(wikiName);
-            state.wiki = new $tw.Wiki();
+            let encodedName = encodeURIComponent(wikiName);
+            state = {
+                boot: {
+                    files: [],
+                    wikiInfo: null,
+                    wikiPath: wikiPath,
+                    wikiTiddlersPath: null
+                },
+                pathPrefix: pathPrefix? `/${pathPrefix}/${wikisPrefix}/${encodedName}`: `/${wikisPrefix}/${encodedName}`,
+                rootWidget: null,
+                route: new RegExp(pathPrefix? `^/${pathPrefix}/${wikisPrefix}/(${encodedName})/?$`: `^/${wikisPrefix}/(${encodedName})/?$`),
+                wiki: new $tw.Wiki(),
+                wikiName: wikiName
+            };
             // Load the boot tiddlers (from $tw.loadTiddlersNode)
             $tw.utils.each($tw.loadTiddlersFromPath($tw.boot.bootPath),function(tiddlerFile) {
                 state.wiki.addTiddlers(tiddlerFile.tiddlers);
-            });
+            });debugger;
             // Load the core tiddlers
             state.wiki.addTiddler($tw.loadPluginFolder($tw.boot.corePath));
+            // Load any extra plugins
+            $tw.utils.each($tw.boot.extraPlugins,function(name) {
+                if(name.charAt(0) === "+") { // Relative path to plugin
+                    var pluginFields = $tw.loadPluginFolder(name.substring(1));
+                    if(pluginFields) {
+                        state.wiki.addTiddler(pluginFields);
+                    }
+                } else {
+                    var parts = name.split("/"),
+                        type = parts[0];
+                    if(parts.length  === 3 && ["plugins","themes","languages"].indexOf(type) !== -1) {
+                        $tw.utils.loadStatePlugins(state,[parts[1] + "/" + parts[2]],$tw.config[type + "Path"],$tw.config[type + "EnvVar"]);
+                    }
+                }
+            });
             // Load the tiddlers from the wiki directory
-            state.boot.wikiInfo = $tw.utils.loadWikiStateTiddlers(state,wikiPath);
+            state.boot.wikiInfo = $tw.utils.loadWikiStateTiddlersNode(state,wikiPath);
             // Create a root widget for attaching event handlers. By using it as the parentWidget for another widget tree, one can reuse the event handlers
-            state.rootWidget = new widget.widget(
-                {
-                    type: "widget",
-                    children: []
-                },{
+            state.rootWidget = new widget.widget({
+                type: "widget",
+                children: []
+            },{
                     wiki: state.wiki,
                     document: $tw.fakeDocument
-                }
-            );
+            });
             // Execute any startup actions
             state.rootWidget.invokeActionsByTag("$:/tags/StartupAction");
             state.rootWidget.invokeActionsByTag("$:/tags/StartupAction/Node");
@@ -89,10 +103,10 @@ exports.loadWikiState = function(serveInfo,prefix) {
             };
             state.wiki.addTiddler(new $tw.Tiddler(fields));
             // Set the wiki as loaded
-            $tw.wikiStates.set(wikiName,state);
+            $tw.utils.setWikiState(wikiName,state);
             $tw.hooks.invokeHook('wiki-loaded',wikiName);
-        } catch (err) {
-            console.error(err);
+        } catch (err) {debugger;
+            $tw.utils.error(err);
         }
     }
     return state;
@@ -105,7 +119,7 @@ exports.loadWikiState = function(serveInfo,prefix) {
         parentPaths: array of parent paths that we mustn't recurse into
         readOnly: true if the tiddler file paths should not be retained
 */
-exports.loadWikiStateTiddlers = function(state,wikiPath,options) {
+exports.loadWikiStateTiddlersNode = function(state,wikiPath,options) {
     options = options || {};
     let parentPaths = options.parentPaths || [],
         wikiInfoPath = path.resolve(wikiPath,$tw.config.wikiInfo),
@@ -245,18 +259,31 @@ exports.loadStatePlugin = function(state,name,paths) {
             return;
         }
     }
-    console.log("Warning: Cannot find plugin '" + name + "'");
+    $tw.utils.log(`Warning for Wiki '${state.wikiName}': Cannot find plugin '${name}'`);
 };
 
-/*
-    Given a wiki name this gets the current tiddlywiki state object
-*/
+// Wiki State methods
+
 exports.getWikiState = function(wikiName) {
     let state = null;
     if (wikiName == "RootWiki") {
         state = $tw;
-    } else if ($tw.wikiStates.has(wikiName)) {
-        state = $tw.wikiStates.get(wikiName);
+    } else if ($tw.states.has(wikiName)) {
+        state = $tw.states.get(wikiName);
     }
     return state;
+}
+
+exports.setWikiState = function(wikiName,state) {
+    if (wikiName !== "RootWiki") {
+        $tw.states.set(wikiName,state)
+    }
+}
+
+exports.hasWikiState = function(wikiName,state) {
+    if (wikiName == "RootWiki") {
+        return true;
+    } else {
+        return $tw.states.has(wikiName)
+    }
 }

@@ -21,7 +21,7 @@ exports.path = /^\/status$/;
 exports.handler = function(request,response,state) {
   let conectionIp = request.headers['x-forwarded-for'] ? request.headers['x-forwarded-for'].split(/\s*,\s*/)[0]:
   request.connection.remoteAddress;
-  $tw.Yjs.logger.log(`['${state.queryParameters["session"]}'] GET ${state.urlInfo.href} (${conectionIp})`);
+  $tw.utils.log(`['${state.queryParameters["session"]}'] GET ${state.urlInfo.href} (${conectionIp})`);
   // build the status objects
   if(state.queryParameters && state.queryParameters["wiki"] && state.queryParameters["session"]) {
       let session = $tw.Yjs.openSession({

@@ -4,7 +4,7 @@
       "file": "jszip.min.js",
       "fields": {
         "type": "application/javascript",
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/jszip/jszip.js",
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/jszip/jszip.js",
         "module-type": "library"
       }
     }

@@ -3,7 +3,7 @@
    {
       "file": "LICENSE",
       "fields": {
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/unique-names-generator/LICENSE",
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/unique-names-generator/LICENSE",
         "type": "text/markdown",
         "source": "https://www.npmjs.com/package/unique-names-generator"
       }
@@ -11,7 +11,7 @@
     {
       "file": "README.md",
       "fields": {
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/unique-names-generator/README",
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/unique-names-generator/README",
         "type": "text/markdown",
         "source": "https://www.npmjs.com/package/unique-names-generator"
       }
@@ -19,7 +19,7 @@
     {
       "file": "./dist/index.js",
       "fields": {
-        "title": "$:/plugins/joshuafontany/tw5-yjs/External/unique-names-generator/dist/index.js",
+        "title": "$:/plugins/joshuafontany/tw5-yjs/external/unique-names-generator/dist/index.js",
         "module-type": "library",
         "type": "application/javascript",
         "source": "https://www.npmjs.com/package/unique-names-generator"

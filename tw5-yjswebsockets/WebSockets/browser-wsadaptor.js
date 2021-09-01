@@ -23,7 +23,7 @@ function WebsocketAdaptor(options) {
   this.isLoggedIn = false;
   this.isReadOnly = false;
   this.isAnonymous = true;
-  this.sessionId = window.sessionStorage.getItem("ws-adaptor-session") || $tw.Yjs.uuid.NIL;
+  this.sessionId = window.sessionStorage.getItem("ws-adaptor-session") || $tw.utils.uuid.NIL;
   this.session = null;
   // Initialise Yjs in the browser
   $tw.Yjs = $tw.Yjs || new Yjs.YSyncer();
@@ -100,7 +100,7 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
           // Setup the connection
           let options = {
             id: json["session_id"],
-            url: new $tw.Yjs.url($tw.Yjs.getHost(self.host)),
+            url: new URL($tw.Yjs.getHost(self.host)),
             doc: self.doc,
             wikiName: $tw.wikiName,
             username: json.username,
@@ -183,7 +183,7 @@ WebsocketAdaptor.prototype.logout = function(callback) {
 		type: "POST",
 		data: {},
 		callback: function(err,data) {
-      self.sessionId = $tw.Yjs.uuid.NIL;
+      self.sessionId = $tw.utils.uuid.NIL;
       window.sessionStorage.setItem("ws-adaptor-session", self.sessionId);
 			callback(err);
 		}
@@ -259,7 +259,7 @@ WebsocketAdaptor.prototype.loadTiddler = function(title,callback) {
       callback(null,null);
     }
   } catch (error) {
-    console.warn(error);
+    $tw.utils.error(error);
     callback($tw.language.getString("Error/XMLHttpRequest") + ": 0");
   }
 }
