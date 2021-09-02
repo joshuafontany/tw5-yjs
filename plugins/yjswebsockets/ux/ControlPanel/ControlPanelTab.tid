@@ -1,0 +1,147 @@
+title: $:/plugins/commons/yjs/ControlPanelTab
+tags: $:/tags/ControlPanel
+caption: Yjs
+
+Wiki Server Address (<$reveal type='nomatch' state='$:/ServerIP!!host' text='0.0.0.0'>not </$reveal>available on local network):
+<pre><$text text={{{ [{$:/ServerIP}addsuffix[:]addsuffix{$:/ServerIP!!port}] }}}/></pre>
+
+Click the ^^(?)^^ next to options for more information.
+
+<$linkcatcher
+  to='$:/state/tw5-yjs/ShowSettingTab'
+>
+
+* [[Setup This Wiki|$:/plugins/commons/yjs/ThisWikiTab]] - manage plugins and themes for this wiki
+* [[Backups|$:/plugins/commons/yjs/BackupsTab]] - enable and setup automatic backups
+* [[Wiki Management|$:/plugins/commons/yjs/ManageWikis]] - create, delete and rename wikis
+* [[Saver Server|$:/plugins/commons/yjs/SaverServer]] - enable and configure the saver for single file wikis
+* [[File Server|$:/plugins/commons/yjs/FileServerSetup]] - setup file server so that you can access local media files
+* [[Server Settings|$:/plugins/commons/yjs/ServerTab]] - logging and manual settings
+<!--* [[Federation|$:/plugins/commons/yjs/FederationTab]] - federated chat and set up wiki syncing between this server and other Yjs servers-->
+<$reveal
+  type=match
+  state="$:/status/IsLoggedIn"
+  text=yes
+  tag=""
+>
+
+* [[Wiki Access Settings|$:/plugins/commons/yjs/WikisTab]] - Manage access to your wikis and wikis that you have been given access to.
+* [[Profile and People|$:/plugins/commons/yjs/PeopleTab]] - View and manage your profile and your connections to other people using this server.
+</$reveal>
+* [[Written Documentation|$:/plugins/commons/yjs/Documentation/Yjs Documentation]] - more details
+* [[About OokTech/Support Development|$:/plugins/commons/yjs/OokTechInfo]] - About the people who make Yjs
+
+</$linkcatcher>
+
+<$button>
+  Download HTML version of this wiki
+  <$action-downloadwiki/>
+</$button> <<helpButton $:/plugins/commons/yjs/AboutDownloadHTMLVersion>>
+
+---
+
+<$list
+  filter='[{$:/state/tw5-yjs/ShowSettingTab}]'
+>
+
+  <h2>
+    <$view
+      field='caption'
+    >
+      <$view
+        field='title'
+      >
+      </$view>
+    </$view>
+  </h2>
+
+  <$transclude/>
+
+</$list>
+
+<!--
+<$reveal type='nomatch' state='$:/settings/tw5-yjs/Verbose' text='false'>
+
+  If you are comfortable with Yjs and don't need long labels you can set this to `Compact Help` and remove many of the help labels to make the interface more compact.
+
+</$reveal>
+
+<$radio
+  tiddler='$:/settings/tw5-yjs/Verbose'
+  field='text'
+  value='false'
+>
+  Compact Help
+</$radio>
+<$radio
+  tiddler='$:/settings/tw5-yjs/Verbose'
+  field='text'
+  value='true'
+>
+  Verbose Help
+</$radio>
+
+<$reveal
+  type='nomatch'
+  state='$:/status/WikiName!!text'
+  text='RootWiki'
+>
+  <$checkbox
+    tiddler='$:/settings/tw5-yjs/DisplayOnChildWikis'
+    field='text'
+    checked='yes'
+    unchecked='no'
+  >
+    Show Full Settings
+  </$checkbox>
+</$reveal>
+
+<$reveal
+  type='nomatch'
+  state='$:/settings/tw5-yjs/Verbose'
+  text='false'
+>
+
+  See [[exporting wikis|$:/plugins/commons/yjs/Documentation/Exporting Wikis]] for information
+  about different ways to save or export your wikis.
+
+  This saves the wiki to the server, it doesn't download it.
+  <$button>
+    Save Single File Wiki
+    <$action-websocketmessage
+      $type='buildHTMLWiki'
+    />
+  </$button>
+
+  This downloads the current wiki as a single file wiki.
+  <$button>
+    Download Single File Version
+    <$action-downloadwiki
+    />
+  </$button>
+
+</$reveal>
+
+<$reveal type='match' state='$:/settings/tw5-yjs/Verbose' text='false'>
+
+  <$button>
+    Save HTML Wiki to Server
+    <$action-websocketmessage
+      $type='buildHTMLWiki'
+    />
+  </$button>
+  <$button>
+    Download HTML Version
+    <$action-downloadwiki
+    />
+  </$button>
+
+</$reveal>
+
+<$list
+  filter='[[$:/status/WikiName]text[RootWiki]][[$:/settings/tw5-yjs/DisplayOnChildWikis]text[yes]] +[limit[1]]'
+  emptyMessage="""<<tabs "[[$:/plugins/commons/yjs/ManageWikis]][[$:/plugins/commons/yjs/ThisWikiTab]][[$:/plugins/commons/yjs/ServerMessageHistory]][[$:/plugins/commons/yjs/SaverServer]][[$:/plugins/commons/yjs/OokTechInfo]]" "$:/plugins/commons/yjs/Wiki Listing">>"""
+>
+  <<tabs "[[$:/plugins/commons/yjs/ManageWikis]][[$:/plugins/commons/yjs/ThisWikiTab]][[$:/plugins/commons/yjs/ServerTab]][[$:/plugins/commons/yjs/FederationTab]][[$:/plugins/commons/yjs/SaverServer]][[$:/plugins/commons/yjs/BackupsTab]][[$:/plugins/commons/yjs/Documentation/Yjs Documentation]][[$:/plugins/commons/yjs/OokTechInfo]]" "$:/plugins/commons/yjs/ManageWikis">>
+</$list>
+-->

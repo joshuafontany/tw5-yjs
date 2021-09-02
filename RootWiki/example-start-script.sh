@@ -10,4 +10,4 @@ export TIDDLYWIKI_EDITION_PATH="/c/tw/editions"
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-node tiddlywiki "+plugins/joshuafontany/tw5-yjs" "+plugins/joshuafontany/tw5-yjswebsockets" "+plugins/tiddlywiki/filesystem" "$SCRIPT_DIR" --ws-listen
+node tiddlywiki "+plugins/commmons/tw5-multiserver" "+plugins/commmons/tw5-yjs" "+plugins/commmons/tw5-yjswebsockets" "+plugins/tiddlywiki/filesystem" "$SCRIPT_DIR" --ws-listen

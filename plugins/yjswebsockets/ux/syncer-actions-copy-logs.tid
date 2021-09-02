@@ -1,0 +1,6 @@
+title: $:/plugins/commons/yjs/syncer-actions/copy-logs
+tags: $:/tags/SyncerDropdown
+
+<$button message="tm-copy-syncer-logs-to-clipboard" class="tc-btn-invisible">
+{{$:/core/images/copy-clipboard}} Copy syncer logs to clipboard
+</$button>

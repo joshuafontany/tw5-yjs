@@ -1,0 +1,12 @@
+{
+  "tiddlers": [
+    {
+      "file": "jszip.min.js",
+      "fields": {
+        "type": "application/javascript",
+        "title": "$:/plugins/commons/yjs/external/jszip/jszip.js",
+        "module-type": "library"
+      }
+    }
+  ]
+}

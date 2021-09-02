@@ -1,0 +1,101 @@
+{
+  "tiddlers": [],
+  "directories": [
+    {
+      "path": "./yjs",
+      "filesRegExp": "^.+\\.(c)?js(\\.map)?",
+      "isTiddlerFile": false,
+      "isEditableFile": false,
+      "fields": {
+        "title": {
+          "source": "filename",
+          "prefix": "$:/plugins/commons/yjs/"
+        },
+        "module-type": "library",
+        "type": "application/javascript",
+        "source": "https://github.com/yjs/yjs",
+        "version": "13.5.12"
+      }
+    },
+    {
+      "path": "./y-protocols",
+      "filesRegExp": "^.+\\.(c)?js(\\.map)?",
+      "isTiddlerFile": false,
+      "isEditableFile": false,
+      "fields": {
+        "title": {
+          "source": "filename",
+          "prefix": "$:/plugins/commons/yjs/"
+        },
+        "module-type": "library",
+        "type": "application/javascript",
+        "source": "https://github.com/yjs/y-protocols",
+        "version": "1.0.5"
+      }
+    },
+    {
+      "path": "./y-indexeddb",
+      "filesRegExp": "^.+\\.(c)?js(\\.map)?",
+      "isTiddlerFile": false,
+      "isEditableFile": false,
+      "fields": {
+        "title": {
+          "source": "filename",
+          "prefix": "$:/plugins/commons/yjs/"
+        },
+        "module-type": "library",
+        "type": "application/javascript",
+        "source": "https://github.com/yjs/y-indexeddb",
+        "version": "9.0.6"
+      }
+    },
+    {
+      "path": "./y-leveldb",
+      "filesRegExp": "^.+\\.(c)?js(\\.map)?",
+      "isTiddlerFile": false,
+      "isEditableFile": false,
+      "fields": {
+        "title": {
+          "source": "filename",
+          "prefix": "$:/plugins/commons/yjs/"
+        },
+        "module-type": "library",
+        "type": "application/javascript",
+        "source": "https://github.com/yjs/y-leveldb",
+        "version": "0.1.0"
+      }
+    },
+    {
+      "path": "./lib0",
+      "filesRegExp": "^.+\\.(c)?js(\\.map)?",
+      "isTiddlerFile": false,
+      "isEditableFile": false,
+      "fields": {
+        "title": {
+          "source": "filename",
+          "prefix": "$:/plugins/commons/yjs/lib0/dist/"
+        },
+        "module-type": "library",
+        "type": "application/javascript",
+        "source": "https://github.com/dmonad/lib0/",
+        "version": "0.1.0"
+      }
+    },
+    {
+      "path": "./isomorphic.js",
+      "filesRegExp": "^.+\\.(c)?js(\\.map)?",
+      "isTiddlerFile": false,
+      "isEditableFile": false,
+      "fields": {
+        "title": {
+          "source": "filename",
+          "prefix": "$:/plugins/commons/yjs/lib0/dist/"
+        },
+        "module-type": "library",
+        "type": "application/javascript",
+        "source": "https://github.com/dmonad/isomorphic.js",
+        "version": "0.2.4"
+      }
+    }
+  ]
+}
