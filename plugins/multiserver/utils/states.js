@@ -26,10 +26,7 @@ exports.loadStateWiki = function(serveInfo,pathPrefix,wikisPrefix) {
     // and the user can choose to `includeWikis` a wiki from the repo to serve those tiddlers.
     let state = null,
         wikiName = typeof serveInfo === "string"? serveInfo: serveInfo.name,
-        wikiPath = wikiName == "RootWiki"? null: $tw.findLibraryItem(
-            typeof serveInfo === "string"? serveInfo: serveInfo.path,
-            $tw.getLibraryItemSearchPaths($tw.config.editionsPath,$tw.config.editionsEnvVar)
-        ); debugger;
+        wikiPath = $tw.utils.findStateWiki(serveInfo);
     // Make sure it isn't loaded already
     if(wikiPath && !$tw.utils.hasStateWiki(wikiName)) {
 /*         try { */
@@ -133,6 +130,30 @@ exports.loadStateWiki = function(serveInfo,pathPrefix,wikisPrefix) {
     }
     return state;
 };
+
+/*
+    name: Name of the wiki to find
+    paths: array of file paths to search for it
+    Returns the path of the wiki folder, 
+    searching from the end of the paths array
+*/
+exports.findStateWiki = function(serveInfo) {
+    if (typeof serveInfo === "string" && serveInfo !== "RootWiki" || serveInfo.name !== "RootWiki") {
+        let wikiPath = typeof serveInfo === "string"? serveInfo: serveInfo.path;
+        let paths = $tw.getLibraryItemSearchPaths($tw.config.editionsPath,$tw.config.editionsEnvVar);
+        // Send the core library path to the end of the paths array, so it is searched last
+        paths.push(paths.shift());
+        var pathIndex = 0;
+        do {
+            var finalPath = path.resolve(paths[pathIndex],wikiPath)
+            if(fs.existsSync(finalPath) && fs.statSync(finalPath).isDirectory()) {
+                return finalPath;
+            }
+        } while(++pathIndex < paths.length);
+        $tw.utils.log("findWikiState error, serveInfo: "+JSON.stringify(serveInfo,null,2));
+    }
+	return null;
+}
     
 /*
     state: a tiddlywiki state instance  
@@ -151,6 +172,7 @@ exports.loadStateWikiTiddlersNode = function(state,wikiPath,options) {
     if(fs.existsSync(wikiInfoPath)) {
         wikiInfo = JSON.parse(fs.readFileSync(wikiInfoPath,"utf8"));
     } else {
+        $tw.utils.log(`loadStateWikiTiddlersNode error, unable to find '${wikiInfoPath}'`);
         return null;
     }
     // Save the path to the tiddlers folder for the filesystemadaptor
@@ -163,20 +185,20 @@ exports.loadStateWikiTiddlersNode = function(state,wikiPath,options) {
         parentPaths = parentPaths.slice(0);
         parentPaths.push(wikiPath);
         $tw.utils.each(wikiInfo.includeWikis,function(info) {
-        if(typeof info === "string") {
-            info = {path: info};
-        }
-        let resolvedIncludedWikiPath = path.resolve(wikiPath,info.path);
-        if(parentPaths.indexOf(resolvedIncludedWikiPath) === -1) {
-            let subWikiInfo = $tw.loadWikiTiddlers(state,resolvedIncludedWikiPath,{
-            parentPaths: parentPaths,
-            readOnly: info["read-only"]
-            });
-            // Merge the build targets
-            wikiInfo.build = $tw.utils.extend([],subWikiInfo.build,wikiInfo.build);
-        } else {
-            $tw.utils.error("Cannot recursively include wiki " + resolvedIncludedWikiPath);
-        }
+            if(typeof info === "string") {
+                info = {path: info};
+            }
+            let resolvedIncludedWikiPath = path.resolve(wikiPath,info.path);
+            if(parentPaths.indexOf(resolvedIncludedWikiPath) === -1) {
+                let subWikiInfo = $tw.utils.loadStateWikiTiddlersNode(state,resolvedIncludedWikiPath,{
+                parentPaths: parentPaths,
+                readOnly: info["read-only"]
+                });
+                // Merge the build targets
+                wikiInfo.build = $tw.utils.extend([],subWikiInfo.build,wikiInfo.build);
+            } else {
+                $tw.utils.error("Cannot recursively include wiki " + resolvedIncludedWikiPath);
+            }
         });
     }
     // Load any plugins, themes and languages listed in the wiki info file
