@@ -32,6 +32,7 @@ Command.prototype.execute = function() {
     $tw.utils.warning("Warning: Wiki folder '" + $tw.boot.wikiPath + "' does not exist or is missing a tiddlywiki.info file");
     return;
   }
+  let self = this;
   // Set up http(s) server
   this.server = new MultiServer({
 		wiki: this.commander.wiki,
@@ -40,7 +41,7 @@ Command.prototype.execute = function() {
       "$:/plugins/tiddlywiki/filesystem",
       "$:/plugins/tiddlywiki/tiddlyweb"
     ].join(','),
-		variables: this.params
+		variables: self.params
 	});
   // Listen
   let nodeServer = this.server.listen();

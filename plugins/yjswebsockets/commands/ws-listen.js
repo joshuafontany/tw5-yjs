@@ -36,15 +36,6 @@ Command.prototype.execute = function() {
     return;
   }
   let self = this;
-  // Initialise the server settings
-  let settings;
-  try {
-    settings = JSON.parse(fs.readFileSync(path.join($tw.boot.wikiPath, 'settings', 'settings.json')));
-  } catch (err) {
-    $tw.utils.log('Server Settings Error - using default values.');
-    settings = {};
-  }
-  settings = $tw.utils.extend(this.commander.wiki.getTiddlerData('$:/config/tiddlyweb/multiserver',{}),settings);
   // Set up http(s) server
   this.server = new MultiServer({
 		wiki: this.commander.wiki,
@@ -54,7 +45,7 @@ Command.prototype.execute = function() {
       "$:/plugins/commons/yjswebsockets",
       "$:/plugins/tiddlywiki/filesystem"
     ].join(','),
-		variables: $tw.utils.extend(settings,self.params)
+		variables: self.params
 	});
   // Set up the the WebSocketServer
   this.wsServer = new WebSocketServer({
