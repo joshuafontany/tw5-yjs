@@ -21,7 +21,6 @@ const encoding = require('./lib0/dist/encoding.cjs');
 const decoding = require('./lib0/dist/decoding.cjs');
 const mutex = require('./lib0/dist/mutex.cjs');
 const map = require('./lib0/dist/map.cjs');
-const observable_js = require('./lib0/dist/observable.cjs');
 const { uniqueNamesGenerator, adjectives, colors, animals, names } = require('./external/unique-names-generator/dist/index.js');
 
 // Polyfill because IE uses old javascript
@@ -36,38 +35,23 @@ if(!String.prototype.startsWith) {
 */
 class YSyncer {
   constructor () {
-    // Create a logger
-    this.logger = $tw.node? new $tw.utils.Logger("Yjs-server"): new $tw.utils.Logger("Yjs-browser");
-    // YDocs
-    this.YDocs = new Map();
     // disable gc when using snapshots!
     this.gcEnabled = $tw.node? (process.env.GC !== 'false' && process.env.GC !== '0'): true;
+    // Create a logger
+    this.logger = $tw.node? new $tw.utils.Logger("yjs-server"): new $tw.utils.Logger("yjs-browser");
+    // Sessions
+    this.sessions = new Map();
+    // YDocs
+    this.YDocs = new Map();
     /**
      * @type {{bindState: function(string,WSSharedDoc):void, writeState:function(string,WSSharedDoc):Promise<any>, provider: any}|null}
      */
     this.persistence = null;
-
-    // Sessions
-    this.sessions = new Map();
   }
 
   /*
     Websocket Session methods
   */
-
-  getHost (host) {
-    host = new this.url(host || (!!document.location && document.location.href));
-    // Websocket host
-    let protocol = null;
-    if(host.protocol == "http:") {
-      protocol = "ws:";
-    } else if(host.protocol == "https:") {
-      protocol = "wss:";
-    }
-    host.protocol = protocol
-    return host.toString();
-  }
-
   // Reconnect a session or create a new one
   openSession (options) {
     let session = this.getSession(options.id)
@@ -101,92 +85,6 @@ class YSyncer {
   }
 
   /*
-    Wiki methods
-  */
-
-  loadWiki (wikiName = $tw.wiki.getTiddlerText("$:/status/WikiName", $tw.wiki.getTiddlerText("$:/SiteTitle", "")),cb) { 
-    let error = null;
-    if(!!wikiName && !$tw.states.has(wikiName)) {
-      try{
-        // Set the name for this wiki for websocket messages
-        $tw.wikiName = wikiName;
-
-        // Setup the YDoc for the wiki
-        let wikiDoc = this.getYDoc(wikiName);
-        let wikiTitles = wikiDoc.getArray("wikiTitles");
-        let wikiTiddlers = wikiDoc.getArray("wikiTiddlers");
-        let wikiTombstones = wikiDoc.getArray("wikiTombstones");
-        //Attach the persistence provider here
-
-        // Attach a y-tiddlywiki provider here
-        // This leaves each wiki's syncadaptor free to sync to disk or other storage
-
-        // Setup the observers
-        let queueTiddler = function(title) {
-          if(title && $tw.syncer) {
-            $tw.syncer.titlesToBeLoaded[title] = true;
-          }
-        }
-        wikiTiddlers.observeDeep((events,transaction) => {
-          if ($tw.syncadaptor.session && transaction.origin !== $tw.wiki) {
-            let targets = [];
-            events.forEach(event => {
-              if (event.target == event.currentTarget) {
-                // A tiddler was added
-                event.changes.added.forEach(added => {
-                  console.log(added.content.type.toJSON());
-                  let title = added.content.type.get('title');
-                  if(targets.indexOf(title) == -1) {
-                    targets.push(title);
-                  }
-                });
-              } else {
-                // A tiddler was modified
-                console.log(event.target.toJSON());
-                let title = event.target.get("title");
-                if(targets.indexOf(title) == -1) {
-                  targets.push(title);
-                }
-              }
-            });
-            targets.forEach((title) => {
-              console.log(`['${transaction.origin}'] Updating tiddler: ${title}`);
-              queueTiddler(title);
-            })
-            $tw.utils.nextTick(() => $tw.syncer.processTaskQueue());
-          }
-        });
-
-        wikiTombstones.observe((event,transaction) => {
-          if (transaction.origin !== $tw.wiki) {
-            event.delta.forEach(delta => {
-              if(delta.insert) {
-                delta.insert.forEach(item => {
-                  console.log(`['${transaction.origin}'] Deleting tiddler: ${item}`);
-                  // A tiddler was deleted
-                  $tw.wiki.deleteTiddler(item)
-                });
-              }
-            });
-          }
-        });
-
-        // Set this wiki as loaded
-        $tw.states.set($tw.wikiName,$tw);
-        $tw.hooks.invokeHook('wiki-loaded',wikiName);
-      } catch (err) {
-        console.error(err);
-        error = err;
-      }
-    }
-    if (typeof cb === 'function') {
-      cb(error,error == null?true:false);
-    } else {
-      return error == null?true:false;
-    }
-  };
-
-  /*
     Yjs methods
   */
 
@@ -199,7 +97,7 @@ class YSyncer {
    */
   getYDoc (docname,gc = this.gcEnabled) {
     return map.setIfUndefined(this.YDocs, docname, () => {
-      const doc = new Y.Doc(docname);
+      const doc = new WSSharedDoc(docname);
       doc.gc = gc;
       doc.name = docname;
       if (this.persistence !== null) {
@@ -213,29 +111,6 @@ class YSyncer {
 }
 
 exports.YSyncer = YSyncer;
-
-/*
-* Node classes
-*/ 
-if($tw.node) {
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
-
-// A polyfilL to make this work with older node installs
-
-// START POLYFILL
-const reduce = Function.bind.call(Function.call, Array.prototype.reduce);
-const isEnumerable = Function.bind.call(Function.call, Object.prototype.propertyIsEnumerable);
-const concat = Function.bind.call(Function.call, Array.prototype.concat);
-const keys = Reflect.ownKeys;
-
-if (!Object.values) {
-  Object.values = function values(O) {
-    return reduce(keys(O), (v, k) => concat(v, typeof k === 'string' && isEnumerable(O, k) ? [O[k]] : []), []);
-  };
-}
-// END POLYFILL
 
 // Y message handler flags
 const messageSync = 0;
@@ -268,43 +143,67 @@ class WSSharedDoc extends Y.Doc {
   constructor (name) {
     super({ gc: $tw.Yjs.gcEnabled })
     this.name = name
-    this.mux = mutex.createMutex()
-    /**
-     * Maps from session to set of controlled user ids & session/doc specific handlers. Delete all user ids from awareness, and clear handlers when this session is closed
-     * @type {Map<Object, Set<number>>}
-     */
-    this.sessions = new Map()
-    this.handlers = new Map()
-    /**
-     * @type {awarenessProtocol.Awareness}
-     */
-    this.awareness = new awarenessProtocol.Awareness(this)
-    this.awareness.setLocalState(null)
-    /**
-     * @param {{ added: Array<number>, updated: Array<number>, removed: Array<number> }} changes
-     * @param {Object | null} origin Origin is the connection that made the change
-     */
-    const awarenessChangeHandler = ({ added, updated, removed }, origin) => {
-      const changedClients = added.concat(updated, removed)
-      if (origin !== null) {
-        const connControlledIDs = /** @type {Set<number>} */ (this.sessions.get(origin))
-        if (connControlledIDs !== undefined) {
-          added.forEach(clientID => { connControlledIDs.add(clientID) })
-          removed.forEach(clientID => { connControlledIDs.delete(clientID) })
+    if($tw.node){
+      this.mux = mutex.createMutex()
+      /**
+       * Maps from session to set of controlled user ids. Delete all user ids from awareness when this session is closed
+       * @type {Map<Object, Set<number>>}
+       */
+      this.sessions = new Map()
+      /**
+       * @type {awarenessProtocol.Awareness}
+       */
+      this.awareness = new awarenessProtocol.Awareness(this)
+      this.awareness.setLocalState(null)
+      /**
+       * @param {{ added: Array<number>, updated: Array<number>, removed: Array<number> }} changes
+       * @param {Object | null} origin Origin is the connection that made the change
+       */
+      const awarenessChangeHandler = ({ added, updated, removed }, origin) => {
+        const changedClients = added.concat(updated, removed)
+        if (origin !== null) {
+          const connControlledIDs = /** @type {Set<number>} */ (this.sessions.get(origin))
+          if (connControlledIDs !== undefined) {
+            added.forEach(clientID => { connControlledIDs.add(clientID) })
+            removed.forEach(clientID => { connControlledIDs.delete(clientID) })
+          }
         }
+        // broadcast awareness update
+        const encoder = encoding.createEncoder()
+        encoding.writeVarUint(encoder, messageAwareness)
+        encoding.writeVarUint8Array(encoder, awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients))
+        this.sessions.forEach((_, s) => {
+          s.send(encoder,this.name);
+        })
       }
-      // broadcast awareness update
-      const encoder = encoding.createEncoder()
-      encoding.writeVarUint(encoder, messageAwareness)
-      encoding.writeVarUint8Array(encoder, awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients))
-      this.sessions.forEach((_, s) => {
-        s.send(encoder,this.name);
-      })
+      this.awareness.on('update', awarenessChangeHandler)
+      this.on('update', updateHandler)
     }
-    this.awareness.on('update', awarenessChangeHandler)
-    this.on('update', updateHandler)
   }
 }
+
+/*
+* Node classes
+*/ 
+if($tw.node) {
+const path = require('path');
+const fs = require('fs');
+const os = require('os');
+
+// A polyfilL to make this work with older node installs
+
+// START POLYFILL
+const reduce = Function.bind.call(Function.call, Array.prototype.reduce);
+const isEnumerable = Function.bind.call(Function.call, Object.prototype.propertyIsEnumerable);
+const concat = Function.bind.call(Function.call, Array.prototype.concat);
+const keys = Reflect.ownKeys;
+
+if (!Object.values) {
+  Object.values = function values(O) {
+    return reduce(keys(O), (v, k) => concat(v, typeof k === 'string' && isEnumerable(O, k) ? [O[k]] : []), []);
+  };
+}
+// END POLYFILL
 
 class YServer extends YSyncer {
   constructor () {
@@ -550,118 +449,6 @@ class YServer extends YSyncer {
       session.ws.close(1000, `['${this.id}'] Websocket closed by the server`,event);
     }
   }
-
-  /*
-    Yjs methods
-  */
-
-  /**
-   * Gets a Y.Doc by name, whether in memory or on disk
-   *
-   * @param {string} docname - the name of the Y.Doc to find or create
-   * @param {boolean} gc - whether to allow gc on the doc (applies only when created)
-   * @return {WSSharedDoc}
-   */
-  getYDoc (docname,gc = this.gcEnabled) {
-    return map.setIfUndefined(this.YDocs, docname, () => {
-      const doc = new WSSharedDoc(docname);
-      doc.gc = gc;
-      if (this.persistence !== null) {
-        this.persistence.bindState(docname, doc);
-      }
-      this.YDocs.set(docname, doc);
-      return doc;
-    })
-  }
-
-  /*
-    Return the resolved filePathRoot
-  */
-  getFilePathRoot () {
-    const currPath = path.parse(process.argv[0]).name !== 'node' ? path.dirname(process.argv[0]) : process.cwd();
-    let basePath = '';
-    this.settings.filePathRoot = this.settings.filePathRoot || './files';
-    if (this.settings.filePathRoot === 'cwd') {
-      basePath = path.parse(process.argv[0]).name !== 'node' ? path.dirname(process.argv[0]) : process.cwd();
-    } else if (this.settings.filePathRoot === 'homedir') {
-      basePath = os.homedir();
-    } else {
-      basePath = path.resolve(currPath, this.settings.filePathRoot);
-    }
-  }
-
-  /*
-    Return the resolved basePath
-  */
-  getBasePath () {
-    const currPath = path.parse(process.argv[0]).name !== 'node' ? path.dirname(process.argv[0]) : process.cwd();
-    let basePath = '';
-    this.settings.basePath = this.settings.basePath || 'cwd';
-    if (this.settings.basePath === 'homedir') {
-      basePath = os.homedir();
-    } else if (this.settings.basePath === 'cwd' || !this.settings.basePath) {
-      basePath = path.parse(process.argv[0]).name !== 'node' ? path.dirname(process.argv[0]) : process.cwd();
-    } else {
-      basePath = path.resolve(currPath, this.settings.basePath);
-    }
-    return basePath;
-  }
-
-  /*
-    Given a wiki name this generates the path for the wiki.
-  */
-  generateWikiPath (wikiName) {
-    const basePath = this.getBasePath();
-    return path.resolve(basePath, this.settings.wikisPath, wikiName);
-  }
-
-  /*
-    Information about the available plugins
-  */
-  getPluginInfo () {
-    this.logger.log('Getting plugin paths...');
-    // Enumerate the plugin paths
-    const pluginPaths = $tw.getLibraryItemSearchPaths($tw.config.pluginsPath,$tw.config.pluginsEnvVar);
-    pluginInfo = {};
-    for(let pluginIndex=0; pluginIndex<pluginPaths.length; pluginIndex++) {
-      const pluginPath = path.resolve(pluginPaths[pluginIndex]);
-      $tw.Yjs.logger.log('Reading theme from ', pluginPaths[pluginIndex], {level:4});
-      // Enumerate the folders
-      try {
-        const authors = fs.readdirSync(pluginPath);
-        for(let authorIndex=0; authorIndex<authors.length; authorIndex++) {
-          const pluginAuthor = authors[authorIndex];
-          if($tw.utils.isDirectory(path.resolve(pluginPath,pluginAuthor))) {
-            const pluginNames = fs.readdirSync(path.join(pluginPath,pluginAuthor));
-            pluginNames.forEach(function(pluginName) {
-              // Check if directories have a valid plugin.info
-              if(!pluginInfo[pluginAuthor + '/' + pluginName] && $tw.utils.isDirectory(path.resolve(pluginPath,pluginAuthor,pluginName))) {
-                let info = false;
-                try {
-                  info = JSON.parse(fs.readFileSync(path.resolve(pluginPath,pluginAuthor, pluginName,"plugin.info"),"utf8"));
-                } catch(ex) {
-                  $tw.Yjs.logger.error('Reading plugin info failed ', ex, {level: 3});
-                  $tw.Yjs.logger.error('Failed to read plugin ', pluginAuthor, '/', pluginName, {level:4});
-                }
-                if(info) {
-                  pluginInfo[pluginAuthor + '/' + pluginName] = info;
-                  $tw.Yjs.logger.error('Read info for plugin ', pluginName, {level:4})
-                }
-              }
-            })
-          }
-        }
-      } catch (e) {
-        if(e.code === 'ENOENT') {
-          $tw.Yjs.logger.log('No Plugins Folder ' + pluginPaths[pluginIndex], {level:2});
-        } else {
-          $tw.Yjs.logger.error('Error getting plugin info', e, {level:2})
-        }
-      }
-    }
-    return pluginInfo;
-  }
-
 }
 
 exports.YServer = YServer;

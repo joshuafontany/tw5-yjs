@@ -13,13 +13,14 @@ A sync adaptor for syncing changes from/to a browser using Yjs websockets
 
 const Yjs = new require('./Yjs.js'),
   Y = require('./yjs.cjs'),
-  CONFIG_HOST_TIDDLER = "$:/config/tw5-yjs/host",
+  CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host",
   DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
 
 function WebsocketAdaptor(options) {
   this.wiki = options.wiki;
   this.host = this.getHost();
   this.hasStatus = false;
+  this.logger = new $tw.utils.Logger("browser-wsadaptor");
   this.isLoggedIn = false;
   this.isReadOnly = false;
   this.isAnonymous = true;
@@ -28,7 +29,6 @@ function WebsocketAdaptor(options) {
   // Initialise Yjs in the browser
   $tw.Yjs = $tw.Yjs || new Yjs.YSyncer();
   this.doc = $tw.Yjs.getYDoc($tw.wikiName);
-  this.logger = new $tw.utils.Logger("browser-wsadaptor");
 }
 
 // Syncadaptor properties
@@ -38,6 +38,10 @@ function WebsocketAdaptor(options) {
 WebsocketAdaptor.prototype.name = "browser-wsadaptor";
 
 WebsocketAdaptor.prototype.supportsLazyLoading = false;
+
+WebsocketAdaptor.prototype.setLoggerSaveBuffer = function(loggerForSaving) {
+	this.logger.setSaveBuffer(loggerForSaving);
+};
 
 WebsocketAdaptor.prototype.isReady = function() {
   return this.hasStatus && this.session && this.session.isReady();
@@ -52,10 +56,6 @@ WebsocketAdaptor.prototype.getHost = function() {
   for(let t=0; t<substitutions.length; t++) {
     let s = substitutions[t];
     text = $tw.utils.replaceString(text,new RegExp("\\$" + s.name + "\\$","mg"),s.value);
-  }
-  if(!!$tw.wikiName && $tw.wikiName !== "RootWiki") {
-    let regxName = new RegExp($tw.wikiName + "\\/?$");
-    text = text.replace(regxName,'');
   }
   return text;
 }
@@ -100,7 +100,6 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
           // Setup the connection
           let options = {
             id: json["session_id"],
-            url: new URL($tw.Yjs.getHost(self.host)),
             doc: self.doc,
             wikiName: $tw.wikiName,
             username: json.username,
@@ -111,6 +110,7 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
             client: true,
             connect: true,
             ip: json.ip,
+            url: new URL(self.host)
           }
           options.url.searchParams.append("wiki", $tw.wikiName);
           options.url.searchParams.append("session", json["session_id"]);

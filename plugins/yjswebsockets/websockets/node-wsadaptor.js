@@ -21,9 +21,8 @@ function WebsocketAdaptor(options) {
 	var self = this;
 	this.wiki = options.wiki;
 	this.boot = options.boot || $tw.boot;
-    this.session = null;
-    this.filesystemadaptor = null;
 	this.logger = new $tw.utils.Logger("node-wsadaptor",{colour: "blue"});
+
 	// Attach a core filesystemadaptor to this syncadaptor
     this.filesystemadaptor = new FileSystemAdaptor(options);
 	// Initialise Yjs on node
@@ -160,6 +159,10 @@ function WebsocketAdaptor(options) {
 WebsocketAdaptor.prototype.name = "node-wsadaptor";
 
 WebsocketAdaptor.prototype.supportsLazyLoading = false;
+
+WebsocketAdaptor.prototype.setLoggerSaveBuffer = function(loggerForSaving) {
+	this.logger.setSaveBuffer(loggerForSaving);
+};
 
 WebsocketAdaptor.prototype.isReady = function() {
 	return this.session && this.session.isReady();

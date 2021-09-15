@@ -52,12 +52,54 @@ Command.prototype.execute = function() {
     clientTracking: false, 
     noServer: true // We roll our own Upgrade,
   });
+  // Verify the Upgrades
+  verifyUpgrade = function(request) {debugger;
+    if(request.url.indexOf("wiki=") !== -1
+    && request.url.indexOf("session=") !== -1) {
+      // Compose the state object
+      var state = {};
+      state.server = self.server;
+      state.ip = request.headers['x-forwarded-for'] ? request.headers['x-forwarded-for'].split(/\s*,\s*/)[0]:
+        request.connection.remoteAddress;
+      state.serverAddress = self.server.protocol + "://" + self.server.httpServer.address().address + ":" + self.server.httpServer.address().port;
+      state.urlInfo = new URL(request.url,state.serverAddress);
+      //state.pathPrefix = request.pathPrefix || this.get("path-prefix") || "";
+      // Get the principals authorized to access this resource
+      var authorizationType = "readers";
+      // Check whether anonymous access is granted
+      state.allowAnon = self.server.isAuthorized(authorizationType,null);
+      // Authenticate with the first active authenticator
+      let fakeResponse = {
+        writeHead: function(){},
+        end: function(){}
+      }
+      if(self.server.authenticators.length > 0) {
+        if(!self.server.authenticators[0].authenticateRequest(request,fakeResponse,state)) {
+          // Bail if we failed (the authenticator will have -not- sent the response)
+          return false;
+        }		
+      }
+      // Authorize with the authenticated username
+      if(!self.server.isAuthorized(authorizationType,state.authenticatedUsername)) {
+        return false;
+      }
+      state.sessionId = state.urlInfo.searchParams.get("session");
+      if($tw.Yjs.hasSession(state.sessionId)) {
+        let session = $tw.Yjs.getSession(state.sessionId);
+        return state.authenticatedUsername == session.authenticatedUsername
+          && state.urlInfo.searchParams.get('wiki') == session.wikiName
+          && state
+      }
+    } else {
+      return false;
+    }
+  };
   // Listen
   let nodeServer = this.server.listen();
   nodeServer.on('upgrade', function(request,socket,head) {
     if(self.wsServer && request.headers.upgrade === 'websocket') {
       // Verify the client here
-      let state = self.server.verifyUpgrade(request);
+      let state = verifyUpgrade(request);
       if(state){
         self.wsServer.handleUpgrade(request,socket,head,function(ws) {
           self.wsServer.emit('connection',ws,request,state);

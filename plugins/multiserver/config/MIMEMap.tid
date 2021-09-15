@@ -1,4 +1,4 @@
-title: $:/config/tiddlyweb/multiserver/MIMEMap
+title: $:/config/commons/multiserver/MIMEMap
 type: application/json
 note: The file extensions and their associated mime-types that the server is allowed to serve.
 

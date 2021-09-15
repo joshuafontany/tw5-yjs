@@ -29,10 +29,10 @@ function MultiServer(options) {
     $tw.utils.log('Server Settings Error - using default values.');
     settings = {};
   }
-  settings = $tw.utils.extend(options.wiki.getTiddlerData('$:/config/tiddlyweb/multiserver',{}),settings);
+  settings = $tw.utils.extend(options.wiki.getTiddlerData('$:/config/commons/multiserver',{}),settings);
   options.variables = $tw.utils.extend(settings,options.variables);
   Server.call(this, options);
-  // Setup muulti-wiki objects
+  // Setup multi-wiki objects
   $tw.states = new Map();
   $tw.wikiName = "RootWiki";
   $tw.pathPrefix = this.get("path-prefix") || "";
@@ -90,55 +90,12 @@ MultiServer.prototype.requestHandler = function(request,response,options) {
 MultiServer.prototype.findStateByRoute = function(request) {
   let potentialMatch = null;
   $tw.states.forEach(function(state,key) {
-    var potentialRoute = state.route,
-      match = potentialRoute.exec(request.url);
+    var match = Object.prototype.toString.call(state.regexp) == '[object RegExp]' && state.regexp.exec(request.url);
     if(match) {
       potentialMatch = state;
     }
   });
 	return potentialMatch;
-};
-
-MultiServer.prototype.verifyUpgrade = function(request) {debugger;
-  if(request.url.indexOf("wiki=") !== -1
-  && request.url.indexOf("session=") !== -1) {
-    // Compose the state object
-    var state = {};
-    state.server = this;
-    state.ip = request.headers['x-forwarded-for'] ? request.headers['x-forwarded-for'].split(/\s*,\s*/)[0]:
-      request.connection.remoteAddress;
-    state.serverAddress = this.protocol + "://" + this.httpServer.address().address + ":" + this.httpServer.address().port;
-    state.urlInfo = new URL(request.url,state.serverAddress);
-    //state.pathPrefix = request.pathPrefix || this.get("path-prefix") || "";
-    // Get the principals authorized to access this resource
-    var authorizationType = "readers";
-    // Check whether anonymous access is granted
-    state.allowAnon = this.isAuthorized(authorizationType,null);
-    // Authenticate with the first active authenticator
-    let fakeResponse = {
-      writeHead: function(){},
-      end: function(){}
-    }
-    if(this.authenticators.length > 0) {
-      if(!this.authenticators[0].authenticateRequest(request,fakeResponse,state)) {
-        // Bail if we failed (the authenticator will have -not- sent the response)
-        return false;
-      }		
-    }
-    // Authorize with the authenticated username
-    if(!this.isAuthorized(authorizationType,state.authenticatedUsername)) {
-      return false;
-    }
-    state.sessionId = state.urlInfo.searchParams.get("session");
-    if($tw.Yjs.hasSession(state.sessionId)) {
-      let session = $tw.Yjs.getSession(state.sessionId);
-      return state.authenticatedUsername == session.authenticatedUsername
-        && state.urlInfo.searchParams.get('wiki') == session.wikiName
-        && state
-    }
-  } else {
-    return false;
-  }
 };
 
 /*
@@ -152,7 +109,7 @@ MultiServer.prototype.addWikiRoutes = function(pathPrefix,wikisPrefix) {
   $tw.utils.each($tw.boot.wikiInfo.serveWikis,function(serveInfo) {
     let state = $tw.utils.loadStateWiki(serveInfo,pathPrefix,wikisPrefix);
     if (state) {
-      // Add the authorized principal over-rides
+      // Add the authorized principal overrides
       if(!!serveInfo.readers) {
         readers = serveInfo.readers.split(',').map($tw.utils.trim);
       }
@@ -161,7 +118,7 @@ MultiServer.prototype.addWikiRoutes = function(pathPrefix,wikisPrefix) {
       }
       self.authorizationPrincipals[`${state.wikiName}/readers`] = readers;
       self.authorizationPrincipals[`${state.wikiName}/writers`] = writers;
-      $tw.utils.log("Added route " + String(state.route));
+      $tw.utils.log("Added route " + String(state.pathPrefix));
     }
   });
 };

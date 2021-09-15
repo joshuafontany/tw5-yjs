@@ -25,108 +25,105 @@ exports.loadStateWiki = function(serveInfo,pathPrefix,wikisPrefix) {
     // This lets users serve editions with the same name as those in the tiddlywiki repository
     // and the user can choose to `includeWikis` a wiki from the repo to serve those tiddlers.
     let state = null,
-        wikiName = typeof serveInfo === "string"? serveInfo: serveInfo.name,
-        wikiPath = $tw.utils.findStateWiki(serveInfo);
+        serveInfo = $tw.utils.findStateWiki(serveInfo);
     // Make sure it isn't loaded already
-    if(wikiPath && !$tw.utils.hasStateWiki(wikiName)) {
-/*         try { */
-            //setup the tiddlywiki state instance
-            let encodedName = encodeURIComponent(wikiName);
-            state = {
-                boot: {
-                    files: [],
-                    wikiInfo: null,
-                    wikiPath: wikiPath,
-                    wikiTiddlersPath: null
-                },
-                pathPrefix: pathPrefix? `/${pathPrefix}/${wikisPrefix}/${encodedName}`: `/${wikisPrefix}/${encodedName}`,
-                rootWidget: null,
-                route: new RegExp(pathPrefix? `^/${pathPrefix}/${wikisPrefix}/(${encodedName})/?(.+)?$`: `^/${wikisPrefix}/(${encodedName})/?(.+)?$`),
-                wiki: new $tw.Wiki(),
-                wikiName: wikiName
-            };
-            // Load the boot tiddlers (from $tw.loadTiddlersNode)
-            $tw.utils.each($tw.loadTiddlersFromPath($tw.boot.bootPath),function(tiddlerFile) {
-                state.wiki.addTiddlers(tiddlerFile.tiddlers);
-            });
-            // Load the core tiddlers
-            state.wiki.addTiddler($tw.loadPluginFolder($tw.boot.corePath));
-            // Load any extra plugins
-            $tw.utils.each($tw.boot.extraPlugins,function(name) {
-                if(name.charAt(0) === "+") { // Relative path to plugin
-                    var pluginFields = $tw.loadPluginFolder(name.substring(1));
-                    if(pluginFields) {
-                        state.wiki.addTiddler(pluginFields);
-                    }
-                } else {
-                    var parts = name.split("/"),
-                        type = parts[0];
-                    if(parts.length  === 3 && ["plugins","themes","languages"].indexOf(type) !== -1) {
-                        $tw.utils.loadStatePlugins(state,[parts[1] + "/" + parts[2]],$tw.config[type + "Path"],$tw.config[type + "EnvVar"]);
-                    }
+    if(serveInfo && !$tw.utils.hasStateWiki(serveInfo.name)) {
+        //setup the tiddlywiki state instance
+        let encodedName = encodeURIComponent(serveInfo.name);
+        state = {
+            boot: {
+                files: [],
+                wikiInfo: null,
+                wikiPath: serveInfo.path,
+                wikiTiddlersPath: null
+            },
+            pathPrefix: pathPrefix? `/${pathPrefix}/${wikisPrefix}/${encodedName}`: `/${wikisPrefix}/${encodedName}`,
+            rootWidget: null,
+            regexp: new RegExp(pathPrefix? `^/${pathPrefix}/${wikisPrefix}/(${encodedName})/?(.+)?$`: `^/${wikisPrefix}/(${encodedName})/?(.+)?$`),
+            wiki: new $tw.Wiki(),
+            wikiName: serveInfo.name
+        };
+        // Load the boot tiddlers (from $tw.loadTiddlersNode)
+        $tw.utils.each($tw.loadTiddlersFromPath($tw.boot.bootPath),function(tiddlerFile) {
+            state.wiki.addTiddlers(tiddlerFile.tiddlers);
+        });
+        // Load the core tiddlers
+        state.wiki.addTiddler($tw.loadPluginFolder($tw.boot.corePath));
+        // Load any extra plugins
+        $tw.utils.each($tw.boot.extraPlugins,function(name) {
+            if(name.charAt(0) === "+") { // Relative path to plugin
+                var pluginFields = $tw.loadPluginFolder(name.substring(1));
+                if(pluginFields) {
+                    state.wiki.addTiddler(pluginFields);
                 }
-            });
-            // Load the tiddlers from the wiki directory
-            state.boot.wikiInfo = $tw.utils.loadStateWikiTiddlersNode(state,wikiPath);
-            // Unpack plugin tiddlers
-            state.wiki.readPluginInfo();
-            state.wiki.registerPluginTiddlers("plugin",$tw.safeMode ? ["$:/core"] : undefined);
-            state.wiki.unpackPluginTiddlers();
-            // Process "safe mode"
-            if($tw.safeMode) {
-                state.wiki.processSafeMode();
+            } else {
+                var parts = name.split("/"),
+                    type = parts[0];
+                if(parts.length  === 3 && ["plugins","themes","languages"].indexOf(type) !== -1) {
+                    $tw.utils.loadStatePlugins(state,[parts[1] + "/" + parts[2]],$tw.config[type + "Path"],$tw.config[type + "EnvVar"]);
+                }
             }
-            /* // Register typed modules from the tiddlers we've just loaded
-            state.wiki.defineTiddlerModules();
-            // And any modules within plugins, but don't overwrite the RootWiki modules!
-            state.wiki.eachShadow(function(tiddler,title) {
-                // Don't define the module if it is overidden by an ordinary tiddler or it is already defined
-                if(!$tw.utils.hop($tw.modules.titles,title) && !state.wiki.tiddlerExists(title) && tiddler.hasField("module-type")) {
-                    // Define the module
-                    $tw.modules.define(tiddler.fields.title,tiddler.fields["module-type"],tiddler.fields.text);
-                }
-            }); */
-            // Create a root widget for attaching event handlers. By using it as the parentWidget for another widget tree, one can reuse the event handlers
-            state.rootWidget = new widget.widget({
-                type: "widget",
-                children: []
-            },{
-                    wiki: state.wiki,
-                    document: $tw.fakeDocument
-            });
-            // Execute any startup actions
-            state.rootWidget.invokeActionsByTag("$:/tags/StartupAction");
-            state.rootWidget.invokeActionsByTag("$:/tags/StartupAction/Node");
-            // Attach the syncadaptor & syncer
-            // Find a working syncadaptor
-            state.syncadaptor = undefined;
-            $tw.modules.forEachModuleOfType("syncadaptor",function(title,module) {
-                if(!state.syncadaptor && module.adaptorClass) {
-                    state.syncadaptor = new module.adaptorClass({boot: state.boot, wiki: state.wiki});
-                }
-            });
-            // Set up the syncer object if we've got a syncadaptor
-            if(state.syncadaptor) {
-                state.syncer = new $tw.Syncer({wiki: state.wiki, syncadaptor: state.syncadaptor});
+        });
+        // Load the tiddlers from the wiki directory
+        state.boot.wikiInfo = $tw.utils.loadStateWikiTiddlersNode(state,serveInfo.path);
+        // Unpack plugin tiddlers
+        state.wiki.readPluginInfo();
+        state.wiki.registerPluginTiddlers("plugin",$tw.safeMode ? ["$:/core"] : undefined);
+        state.wiki.unpackPluginTiddlers();
+        // Process "safe mode"
+        if($tw.safeMode) {
+            state.wiki.processSafeMode();
+        }
+        /* // Register typed modules from the tiddlers we've just loaded
+        state.wiki.defineTiddlerModules();
+        // And any modules within plugins, but don't overwrite the RootWiki modules!
+        state.wiki.eachShadow(function(tiddler,title) {
+            // Don't define the module if it is overidden by an ordinary tiddler or it is already defined
+            if(!$tw.utils.hop($tw.modules.titles,title) && !state.wiki.tiddlerExists(title) && tiddler.hasField("module-type")) {
+                // Define the module
+                $tw.modules.define(tiddler.fields.title,tiddler.fields["module-type"],tiddler.fields.text);
             }
-            // Name the wiki
-            state.wikiName = wikiName;
-            state.wiki.addTiddler(new $tw.Tiddler({
-                title: '$:/status/WikiName',
-                text: wikiName,
-                route: state.pathPrefix
-            }));
-            // Setup the config prefix path. For backwards compatibility we use $:/config/tiddlyweb/host
-            state.wiki.addTiddler(new $tw.Tiddler({
-                title: '$:/config/tiddlyweb/host',
-                text: `$protocol$//$host$${state.pathPrefix}/`
-            }));
-            // Set the wiki as loaded
-            $tw.utils.setStateWiki(wikiName,state);
-            $tw.hooks.invokeHook('wiki-loaded',wikiName);
- /*        } catch (err) {debugger;
-            $tw.utils.error(err);
-        } */
+        }); */
+        // Name the wiki
+        state.wikiName = serveInfo.name;
+        state.wiki.addTiddler(new $tw.Tiddler({
+            title: '$:/status/WikiName',
+            text: serveInfo.name,
+            path: state.pathPrefix
+        }));
+        // Setup the config prefix path. For backwards compatibility we use $:/config/tiddlyweb/host
+        state.wiki.addTiddler(new $tw.Tiddler({
+            title: '$:/config/tiddlyweb/host',
+            text: `$protocol$//$host$${state.pathPrefix}/`
+        }));
+        // Create a root widget for attaching event handlers. By using it as the parentWidget for another widget tree, one can reuse the event handlers
+        state.rootWidget = new widget.widget({
+            type: "widget",
+            children: []
+        },{
+                wiki: state.wiki,
+                document: $tw.fakeDocument
+        });
+        // Execute any startup actions
+        state.rootWidget.invokeActionsByTag("$:/tags/StartupAction");
+        state.rootWidget.invokeActionsByTag("$:/tags/StartupAction/Node");
+        // Clear outstanding tiddler store change events to avoid an unnecessary refresh cycle at startup
+        state.wiki.clearTiddlerEventQueue();
+        // Attach the syncadaptor & syncer
+        // Find a working syncadaptor
+        state.syncadaptor = undefined;
+        $tw.modules.forEachModuleOfType("syncadaptor",function(title,module) {
+            if(!state.syncadaptor && module.adaptorClass) {
+                state.syncadaptor = new module.adaptorClass({boot: state.boot, wiki: state.wiki});
+            }
+        });
+        // Set up the syncer object if we've got a syncadaptor
+        if(state.syncadaptor) {
+            state.syncer = new $tw.Syncer({wiki: state.wiki, syncadaptor: state.syncadaptor});
+        }
+        // Set the wiki as loaded
+        $tw.utils.setStateWiki(serveInfo.name,state);
+        $tw.hooks.invokeHook('wiki-loaded',serveInfo.name);
     }
     return state;
 };
@@ -138,21 +135,20 @@ exports.loadStateWiki = function(serveInfo,pathPrefix,wikisPrefix) {
     searching from the end of the paths array
 */
 exports.findStateWiki = function(serveInfo) {
-    if (typeof serveInfo === "string" && serveInfo !== "RootWiki" || serveInfo.name !== "RootWiki") {
-        let wikiPath = typeof serveInfo === "string"? serveInfo: serveInfo.path;
-        let paths = $tw.getLibraryItemSearchPaths($tw.config.editionsPath,$tw.config.editionsEnvVar);
-        // Send the core library path to the end of the paths array, so it is searched last
-        paths.push(paths.shift());
-        var pathIndex = 0;
-        do {
-            var finalPath = path.resolve(paths[pathIndex],wikiPath)
-            if(fs.existsSync(finalPath) && fs.statSync(finalPath).isDirectory()) {
-                return finalPath;
-            }
-        } while(++pathIndex < paths.length);
-        $tw.utils.log("findWikiState error, serveInfo: "+JSON.stringify(serveInfo,null,2));
+    if(typeof serveInfo === "string") {
+        serveInfo = {
+            name: path.basename(serveInfo),
+            path: serveInfo
+        };
     }
-	return null;
+    let finalPath = path.resolve($tw.boot.wikiPath,serveInfo.path)
+    if($tw.utils.isDirectory(finalPath)) {
+        serveInfo.path = finalPath;
+    } else {
+        $tw.utils.log("findWikiState error, serveInfo: "+JSON.stringify(serveInfo,null,2));
+        serveInfo = null;
+    }
+    return serveInfo;
 }
     
 /*

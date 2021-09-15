@@ -35,8 +35,8 @@ exports.handler = function(request,response,state) {
         doc: $tw.Yjs.getYDoc(state.queryParameters["wiki"]),
         client: false,
         connect: false,
-        url: state.urlInfo,
-        ip: conectionIp
+        ip: conectionIp,
+        url: state.urlInfo
       });
     // Set a login window for 60 seconds.
     $tw.Yjs.refreshSession(session,1000*60)

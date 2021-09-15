@@ -310,9 +310,8 @@ const setupHeartbeat = (session) => {
     this.isLoggedIn = options.isLoggedIn;
     this.isReadOnly = options.isReadOnly;
     this.expires = options.expires || time.getUnixTime();
-
     this.ip = options.ip;
-    this.url = options.url;
+    this.url = this.client? this.getHostURL(options.url): options.url;
     
     if(this.client) {
       let connect = typeof options.connect !== 'undefined' && typeof options.connect !== 'null' ? options.connect : true;
@@ -441,6 +440,13 @@ const setupHeartbeat = (session) => {
 
   isReady () {
     return this.connected && !!this.ws && this.ws.readyState == 1;
+  }
+
+  getHostURL (host) {
+    let url = $tw.node? new require('url').URL(host): new URL(host);
+    // Websocket host
+    url.protocol = url.protocol == "https:"? "wss:":"ws:";
+    return url;
   }
 
   /**
