@@ -1,5 +1,5 @@
 {
-	"description": "This is the default RootWiki edition for the tw5-yjswebsockets plugin",
+	"description": "This is the default multi-wiki edition for the tw5-yjswebsockets plugin",
 	"plugins": [],
 	"themes": [
 		"tiddlywiki/vanilla",

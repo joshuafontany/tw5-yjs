@@ -32,10 +32,6 @@ function MultiServer(options) {
   settings = $tw.utils.extend(options.wiki.getTiddlerData('$:/config/commons/multiserver',{}),settings);
   options.variables = $tw.utils.extend(settings,options.variables);
   Server.call(this, options);
-  // Setup multi-wiki objects
-  $tw.states = new Map();
-  $tw.wikiName = "RootWiki";
-  $tw.pathPrefix = this.get("path-prefix") || "";
   // Initialise admin authorization principles
 	var authorizedUserName = (this.get("username") && this.get("password")) ? this.get("username") : null;
   this.authorizationPrincipals['admin'] = (this.get("admin") || authorizedUserName).split(',').map($tw.utils.trim);
@@ -57,9 +53,9 @@ MultiServer.prototype.isAdmin = function(username) {
 }
 
 MultiServer.prototype.getUserAccess = function(username,wikiName) {
-  wikiName = wikiName || 'RootWiki';
+  wikiName = wikiName || '';
   if(!!username) {
-      let type, accessPath = (wikiName == 'RootWiki')? "" : wikiName+'/';
+      let type, accessPath = wikiName? wikiName+'/' : '';
       type = (this.isAuthorized(accessPath+"readers",username))? "readers" : null;
       type = (this.isAuthorized(accessPath+"writers",username))? "writers" : type;
       type = (this.isAuthorized("admin",username))? "admin" : type;
@@ -82,12 +78,13 @@ MultiServer.prototype.requestHandler = function(request,response,options) {
     return
   }
   // Check for a wikiState route
-  options = this.findStateByRoute(request);
+  options = this.findStateByRoute(request,options);
   // Call the parent method
   Object.getPrototypeOf(MultiServer.prototype).requestHandler.call(this,request,response,options);
 };
 
-MultiServer.prototype.findStateByRoute = function(request) {
+MultiServer.prototype.findStateByRoute = function(request,options) {
+  options = options || {};
   let potentialMatch = null;
   $tw.states.forEach(function(state,key) {
     var match = Object.prototype.toString.call(state.regexp) == '[object RegExp]' && state.regexp.exec(request.url);
@@ -95,7 +92,10 @@ MultiServer.prototype.findStateByRoute = function(request) {
       potentialMatch = state;
     }
   });
-	return potentialMatch;
+  options.boot = potentialMatch.boot;
+  options.pathPrefix = potentialMatch.pathPrefix;
+  options.wiki = potentialMatch.wiki;
+	return options;
 };
 
 /*

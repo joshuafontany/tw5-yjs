@@ -1,7 +1,7 @@
 # Configuration
 
 Configuration for the plugin is set in the `settings.json` file in the
-`settings` sub-folder of the folder where the RootWiki's `tiddlywiki.info` file is
+`settings` sub-folder of the folder where the primary wiki's `tiddlywiki.info` file is
 located.
 
 Everything is optional, if there are any missing pieces default values will be
