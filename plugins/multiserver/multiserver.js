@@ -85,7 +85,7 @@ MultiServer.prototype.requestHandler = function(request,response,options) {
 
 MultiServer.prototype.findStateByRoute = function(request,options) {
   options = options || {};
-  let potentialMatch = null;
+  let potentialMatch = {};
   $tw.states.forEach(function(state,key) {
     var match = Object.prototype.toString.call(state.regexp) == '[object RegExp]' && state.regexp.exec(request.url);
     if(match) {

@@ -14,7 +14,6 @@ A sync adaptor module for synchronising with the local filesystem via node.js AP
 // Get a reference to the file system
 const fs = $tw.node ? require("fs") : null,
 	path = $tw.node ? require("path") : null,
-	Yjs = new require('./Yjs.js'),
     FileSystemAdaptor = require("$:/plugins/tiddlywiki/filesystem/filesystemadaptor.js").adaptorClass;
 
 function WebsocketAdaptor(options) {
@@ -24,12 +23,13 @@ function WebsocketAdaptor(options) {
 	this.logger = new $tw.utils.Logger("node-wsadaptor",{colour: "blue"});
 
 	// Attach a core filesystemadaptor to this syncadaptor
-    this.filesystemadaptor = new FileSystemAdaptor(options);
+    this.fsadaptor = new FileSystemAdaptor(options);
+
 	// Initialise Yjs on node
-	$tw.Yjs = $tw.Yjs || new Yjs.YServer();
+	this.gcEnabled = process.env.GC !== 'false' && process.env.GC !== '0';
 
 	// Setup the YDoc for the wiki
-	let wikiDoc = this.getYDoc(wikiName);
+	let wikiDoc = $tw.utils.getYDoc(wikiName);
 	let wikiTitles = wikiDoc.getArray("wikiTitles");
 	let wikiTiddlers = wikiDoc.getArray("wikiTiddlers");
 	let wikiTombstones = wikiDoc.getArray("wikiTombstones");

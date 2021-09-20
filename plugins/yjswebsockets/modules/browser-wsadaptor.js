@@ -11,7 +11,7 @@ A sync adaptor for syncing changes from/to a browser using Yjs websockets
 /*global $tw: false */
 "use strict";
 
-const Yjs = new require('./Yjs.js'),
+const WebsocketSession = require('./wssession.js').WebsocketSession,
   Y = require('./yjs.cjs'),
   CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host",
   DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
@@ -20,15 +20,19 @@ function WebsocketAdaptor(options) {
   this.wiki = options.wiki;
   this.host = this.getHost();
   this.hasStatus = false;
+  this.session = null;
   this.logger = new $tw.utils.Logger("browser-wsadaptor");
   this.isLoggedIn = false;
   this.isReadOnly = false;
   this.isAnonymous = true;
-  this.sessionId = window.sessionStorage.getItem("ws-adaptor-session") || $tw.utils.uuid.NIL;
-  this.session = null;
+
   // Initialise Yjs in the browser
-  $tw.Yjs = $tw.Yjs || new Yjs.YSyncer();
-  this.doc = $tw.Yjs.getYDoc($tw.wikiName);
+  /**
+   * @type {{bindState: function(string,WikiDoc):void, writeState:function(string,WikiDoc):Promise<any>, provider: any}|null}
+   */
+  this.persistence = null;
+  this.gcEnabled = true;
+  this.doc = $tw.utils.getYDoc($tw.wikiName);
 }
 
 // Syncadaptor properties
@@ -75,7 +79,7 @@ Get the current status of the user
 WebsocketAdaptor.prototype.getStatus = function(callback) {
 	// Get status
 	let self = this,
-    params = "?wiki=" + $tw.wikiName + "&session=" + this.sessionId;
+    params = "?wiki=" + $tw.wikiName + "&session=" + (window.sessionStorage.getItem("ws-session") || $tw.utils.uuid.NIL);
   this.logger.log("Getting status");
 	$tw.utils.httpRequest({
 		url: this.host + "status" + params,
@@ -96,8 +100,12 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 				self.isReadOnly = !!json["read_only"];
 				self.isAnonymous = !!json.anonymous;
 
-        if(json["session_id"]) {
-          // Setup the connection
+        if(this.session && json["session_id"] && this.session.id == json["session_id"]) {
+          this.session.connect()
+        } else if(json["session_id"]) {
+          // Destroy the old session
+          this.session && this.session.destroy();
+          // Setup the session
           let options = {
             id: json["session_id"],
             doc: self.doc,
@@ -114,7 +122,9 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
           }
           options.url.searchParams.append("wiki", $tw.wikiName);
           options.url.searchParams.append("session", json["session_id"]);
-          self.session = $tw.Yjs.openSession(options);
+          self.session = new WebsocketSession(options);
+          // Set the session id
+          window.sessionStorage.setItem("ws-session", self.session.id)
           // Error handler
           self.session.once('error',function(event,session) {
             // Invalid session or connection rejected
@@ -122,9 +132,7 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
               type: "tm-logout"
             });
           });
-          // Set the session id
-          self.sessionId = json["session_id"];
-          window.sessionStorage.setItem("ws-adaptor-session", self.sessionId)
+
         }
       }
       // Invoke the callback if present
@@ -175,16 +183,15 @@ WebsocketAdaptor.prototype.login = function(username,password,callback) {
 */
 WebsocketAdaptor.prototype.logout = function(callback) {
   let self = this,
-    params = "?wiki=" + $tw.wikiName + "&session=" + this.sessionId;
+    params = "?wiki=" + $tw.wikiName + "&session=" + (window.sessionStorage.getItem("ws-session") || $tw.utils.uuid.NIL);
+  this.session.destroy()
   this.session = null;
-  $tw.Yjs.deleteSession(this.sessionId);
 	let options = {
 		url: this.host + "logout" + params,
 		type: "POST",
 		data: {},
 		callback: function(err,data) {
-      self.sessionId = $tw.utils.uuid.NIL;
-      window.sessionStorage.setItem("ws-adaptor-session", self.sessionId);
+      window.sessionStorage.setItem("ws-session", $tw.utils.uuid.NIL);
 			callback(err);
 		}
 	};
@@ -285,7 +292,7 @@ WebsocketAdaptor.prototype.deleteTiddler = function(title,callback,options) {
 }
 
 // Only set up the websockets if we are in the browser and have websockets.
-if($tw.browser && window.location.hostname && $tw.Yjs) {
+if($tw.browser && window.location.hostname) {
   //setupSkinnyTiddlerLoading()
   exports.adaptorClass = WebsocketAdaptor
 }

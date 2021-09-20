@@ -14,10 +14,10 @@ Various static utility functions.
 // Setup external libraries
 
 if($tw.node) {
-    exports.uuid = require('./external/uuid/index.js');
+    exports.uuid = require('../external/uuid/index.js');
 } else {
     exports.uuid = {
-        NIL: require('./external/uuid/index.js').NIL,
-        validate: require('./external/uuid/index.js').validate
+        NIL: require('../external/uuid/index.js').NIL,
+        validate: require('../external/uuid/index.js').validate
     };
 }

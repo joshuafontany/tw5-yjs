@@ -368,9 +368,9 @@ const setupHeartbeat = (session) => {
 
   getSubDoc(docname = null) {
     if(this.client) {
-      return !!docname && docname !== this.doc.name ? $tw.Yjs.getYDoc(docname) : this.doc;
+      return !!docname && docname !== this.doc.name ? $tw.utils.getYDoc(docname) : this.doc;
     } else {
-      return $tw.Yjs.getYDoc(docname);
+      return $tw.utils.getYDoc(docname);
     }
   }
 
@@ -422,8 +422,8 @@ const setupHeartbeat = (session) => {
         this.ws.close(1000, `['${this.id}'] Websocket closed by the client`, err);
       }
     } else {
-      let doc = $tw.Yjs.getYDoc(this.wikiName);
-      $tw.Yjs.closeWSConnection(doc,this,err);
+      let doc = $tw.utils.getYDoc(this.wikiName);
+      $tw.wsServer.closeWSConnection(doc,this,err);
     }
   }
 
