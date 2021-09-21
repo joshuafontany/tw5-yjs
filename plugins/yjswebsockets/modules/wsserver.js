@@ -39,9 +39,11 @@ function WebSocketServer(options) {
     // Add an api key to all wikis
     $tw.states.forEach(function(state,pathPrefix) {
       // Setup the config api key.
-      let config = this.wiki.getTiddler('$:/config/tiddlyweb/host');
-      config.fields.api = $tw.utils.uuid.validate(config.fields.key)? config.fields.key: $tw.utils.uuid.v4();
-      this.wiki.addTiddler(config);
+      let newFields = {
+        title: '$:/config/tiddlyweb/host',
+        api: $tw.utils.uuid.validate(config.fields.key)? config.fields.key: $tw.utils.uuid.v4()
+      }, tiddler = this.wiki.getTiddler('$:/config/tiddlyweb/host');
+      this.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
     })
     // Handle upgrade events
     this.server.on('upgrade',function(request,socket,head) {

@@ -33,11 +33,11 @@ function State(serveInfo,pathPrefix,wikisPrefix) {
     this.wiki = new $tw.Wiki();
 
     // Setup the config prefix path. For backwards compatibility we use $:/config/tiddlyweb/host
-    let config = this.wiki.getTiddler('$:/config/tiddlyweb/host') || new $tw.Tiddler({
-        title: '$:/config/tiddlyweb/host'
-    });
-    config.fields.text = `$protocol$//$host$${this.pathPrefix}/`;
-    this.wiki.addTiddler(config);
+    let newFields = {
+        title: '$:/config/tiddlyweb/host',
+        text: `$protocol$//$host$${this.pathPrefix}/`
+    }, tiddler = this.wiki.getTiddler('$:/config/tiddlyweb/host');
+    this.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
 
     // Create a root widget for attaching event handlers.
     // By using it as the parentWidget for another widget tree, one can reuse the event handlers
