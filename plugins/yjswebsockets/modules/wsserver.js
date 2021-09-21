@@ -36,7 +36,15 @@ function WebSocketServer(options) {
   this.on('close',this.serverClosed);
   this.on('connection',this.handleWSConnection);
   if(this.server){
-    this.server.on('upgrade', function(request,socket,head) {
+    // Add an api key to all wikis
+    $tw.states.forEach(function(state,pathPrefix) {
+      // Setup the config api key.
+      let config = this.wiki.getTiddler('$:/config/tiddlyweb/host');
+      config.fields.api = $tw.utils.uuid.validate(config.fields.key)? config.fields.key: $tw.utils.uuid.v4();
+      this.wiki.addTiddler(config);
+    })
+    // Handle upgrade events
+    this.server.on('upgrade',function(request,socket,head) {
       if(request.headers.upgrade === 'websocket') {
         // Verify the client here
         let state = self.verifyUpgrade(request);
@@ -123,8 +131,8 @@ WebSocketServer.prototype.verifyUpgrade = function(request) {
     state.sessionId = state.urlInfo.searchParams.get("session");
     if(this.hasSession(state.sessionId)) {
       let session = this.getSession(state.sessionId);
-      return state.authenticatedUsername == session.authenticatedUsername
-        && state.urlInfo.searchParams.get('wiki') == session.wikiName
+      return state.authenticatedUsername == session.username
+        && state.pathPrefix == session.pathPrefix
         && state
     }
   } else {
@@ -151,7 +159,7 @@ WebSocketServer.prototype.handleWSConnection = function(socket,request,state) {
     session.connected = true;
     session.synced = false;
 
-    let wikiDoc = $tw.utils.getYDoc(session.wikiName);
+    let wikiDoc = $tw.utils.getYDoc(session.pathPrefix);
     wikiDoc.sessions.set(session, new Set())
     console.log(`['${state.sessionId}'] Opened socket ${socket._socket._peername.address}:${socket._socket._peername.port}`);
     // Event handlers
@@ -366,10 +374,10 @@ WebSocketServer.prototype.getSessionsByUser = function(username) {
   return usersSessions;
 }
 
-WebSocketServer.prototype.getSessionsByWiki = function(wikiName) {
+WebSocketServer.prototype.getSessionsByWiki = function(pathPrefix) {
   let wikiSessions = new Map();
   for (let [id, session] of $tw.sessions.entries()) {
-    if (session.wikiName === wikiName) {
+    if (session.pathPrefix === pathPrefix) {
       wikiSessions.add(id, session);
     }
   }

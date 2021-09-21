@@ -13,8 +13,7 @@ module-type: library
 if($tw.node) {
   const fs = require("fs"),
     path = require("path"),
-    Server = require("$:/core/modules/server/server.js").Server,
-    URL = require('url').URL;
+    Server = require("$:/core/modules/server/server.js").Server;
 
 /*
   A simple node server for Yjs, extended from the core server module
@@ -36,7 +35,7 @@ function MultiServer(options) {
 	var authorizedUserName = (this.get("username") && this.get("password")) ? this.get("username") : null;
   this.authorizationPrincipals['admin'] = (this.get("admin") || authorizedUserName).split(',').map($tw.utils.trim);
   // Add all the routes, this also loads and adds authorization priciples for each wiki
-  this.addWikiRoutes($tw.pathPrefix,this.get("wikis-prefix") || "");
+  this.addWikiRoutes($tw.pathPrefix || "");
 }
 
 MultiServer.prototype = Object.create(Server.prototype);
@@ -52,10 +51,11 @@ MultiServer.prototype.isAdmin = function(username) {
   }
 }
 
-MultiServer.prototype.getUserAccess = function(username,wikiName) {
-  wikiName = wikiName || '';
+
+MultiServer.prototype.getUserAccess = function(username,pathPrefix) {
+  pathPrefix = pathPrefix || '';
   if(!!username) {
-      let type, accessPath = wikiName? wikiName+'/' : '';
+      let type, accessPath = pathPrefix? pathPrefix+'/' : '';
       type = (this.isAuthorized(accessPath+"readers",username))? "readers" : null;
       type = (this.isAuthorized(accessPath+"writers",username))? "writers" : type;
       type = (this.isAuthorized("admin",username))? "admin" : type;
@@ -99,27 +99,29 @@ MultiServer.prototype.findStateByRoute = function(request,options) {
 };
 
 /*
-  Load each wiki. Log each wiki's authorizationPrincipals as `${state.wikiName}/readers` & `${state.wikiName}/writers`.
+  Load each wiki. Log each wiki's authorizationPrincipals as `${state.pathPrefix}/readers` & `${state.pathPrefix}/writers`.
 */
 MultiServer.prototype.addWikiRoutes = function(pathPrefix,wikisPrefix) {
   let self = this,
       readers = this.authorizationPrincipals["readers"],
       writers = this.authorizationPrincipals["writers"];
   // Setup the routes
-  $tw.utils.each($tw.boot.wikiInfo.serveWikis,function(serveInfo) {
-    let state = $tw.utils.loadStateWiki(serveInfo,pathPrefix,wikisPrefix);
-    if (state) {
-      // Add the authorized principal overrides
-      if(!!serveInfo.readers) {
-        readers = serveInfo.readers.split(',').map($tw.utils.trim);
-      }
-      if(!!serveInfo.writers) {
-        writers = serveInfo.writers.split(',').map($tw.utils.trim);
-      }
-      self.authorizationPrincipals[`${state.wikiName}/readers`] = readers;
-      self.authorizationPrincipals[`${state.wikiName}/writers`] = writers;
-      $tw.utils.log("Added route " + String(state.pathPrefix));
-    }
+  $tw.utils.each($tw.boot.wikiInfo.serveWikis,function(group,groupPrefix){
+    $tw.utils.each(group,function(serveInfo) {
+      let state = $tw.utils.loadStateWiki(serveInfo,pathPrefix,groupPrefix);
+      if (state) {
+        // Add the authorized principal overrides
+        if(!!serveInfo.readers) {
+          readers = serveInfo.readers.split(',').map($tw.utils.trim);
+        }
+        if(!!serveInfo.writers) {
+          writers = serveInfo.writers.split(',').map($tw.utils.trim);
+        }
+        self.authorizationPrincipals[`${state.pathPrefix}/readers`] = readers;
+        self.authorizationPrincipals[`${state.pathPrefix}/writers`] = writers;
+        $tw.utils.log("Added route " + String(state.pathPrefix));
+      };
+    });
   });
 };
 

@@ -32,18 +32,12 @@ function State(serveInfo,pathPrefix,wikisPrefix) {
 
     this.wiki = new $tw.Wiki();
 
-    // Name the wiki
-    this.wikiName = serveInfo.name;
-    this.wiki.addTiddler(new $tw.Tiddler({
-        title: '$:/status/WikiName',
-        text: serveInfo.name,
-        path: this.pathPrefix
-    }));
     // Setup the config prefix path. For backwards compatibility we use $:/config/tiddlyweb/host
-    this.wiki.addTiddler(new $tw.Tiddler({
-        title: '$:/config/tiddlyweb/host',
-        text: `$protocol$//$host$${this.pathPrefix}/`
-    }));
+    let config = this.wiki.getTiddler('$:/config/tiddlyweb/host') || new $tw.Tiddler({
+        title: '$:/config/tiddlyweb/host'
+    });
+    config.fields.text = `$protocol$//$host$${this.pathPrefix}/`;
+    this.wiki.addTiddler(config);
 
     // Create a root widget for attaching event handlers.
     // By using it as the parentWidget for another widget tree, one can reuse the event handlers
@@ -145,7 +139,7 @@ State.prototype.loadPlugin = function(name,paths) {
             return;
         }
     }
-    $tw.utils.log(`Warning for Wiki '${this.wikiName}': Cannot find plugin '${name}'`);
+    $tw.utils.log(`Warning for Wiki '${this.pathPrefix}': Cannot find plugin '${name}'`);
 };
 
 /* 
@@ -190,7 +184,7 @@ State.prototype.loadWikiTiddlersNode = function(wikiPath,options) {
                 // Merge the build targets
                 wikiInfo.build = $tw.utils.extend([],subWikiInfo.build,wikiInfo.build);
             } else {
-                $tw.utils.error("Cannot recursively include wiki " + resolvedIncludedWikiPath);
+                $tw.utils.warning("Cannot recursively include wiki " + resolvedIncludedWikiPath);
             }
         });
     }
@@ -297,18 +291,18 @@ exports.loadStateWiki = function(serveInfo,pathPrefix,wikisPrefix) {
     return state;
 };
 
-exports.hasStateWiki = function(wikiName,state) {
-    return $tw.states.has(wikiName)
+exports.hasStateWiki = function(pathPrefix) {
+    return $tw.states.has(pathPrefix)
 }
 
-exports.getStateWiki = function(wikiName) {
+exports.getStateWiki = function(pathPrefix) {
     let state = null;
-    if($tw.states.has(wikiName)) {
-        state = $tw.states.get(wikiName);
+    if($tw.states.has(pathPrefix)) {
+        state = $tw.states.get(pathPrefix);
     }
     return state;
 }
 
-exports.setStateWiki = function(wikiName,state) {
-    $tw.states.set(wikiName,state)
+exports.setStateWiki = function(pathPrefix,state) {
+    $tw.states.set(pathPrefix,state)
 }

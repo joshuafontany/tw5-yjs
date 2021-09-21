@@ -19,6 +19,8 @@ const WebsocketSession = require('./wssession.js').WebsocketSession,
 function WebsocketAdaptor(options) {
   this.wiki = options.wiki;
   this.host = this.getHost();
+  this.pathPrefix = this.getPathPrefix();
+  this.key = this.getKey();
   this.hasStatus = false;
   this.session = null;
   this.logger = new $tw.utils.Logger("browser-wsadaptor");
@@ -32,7 +34,7 @@ function WebsocketAdaptor(options) {
    */
   this.persistence = null;
   this.gcEnabled = true;
-  this.doc = $tw.utils.getYDoc($tw.wikiName);
+  this.doc = $tw.utils.getYDoc(this.pathPrefix);
 }
 
 // Syncadaptor properties
@@ -64,6 +66,22 @@ WebsocketAdaptor.prototype.getHost = function() {
   return text;
 }
 
+WebsocketAdaptor.prototype.getPathPrefix = function() {
+  let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER);
+  text.replace(/\/$/, '');
+  text.replace(/\$protocol\$\/\/\$host\$/, '');
+  return text;
+}
+
+WebsocketAdaptor.prototype.getKey = function() {
+  let key = $tw.utils.uuid.NIL,
+    tiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER);
+  if(tiddler) {
+    key = $tw.utils.uuid.validate(tiddler.fields.key) && tiddler.fields.key;
+  }
+  return key;
+}
+
 WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {
   /* 
     Return the vector clock of the tiddler?
@@ -79,7 +97,7 @@ Get the current status of the user
 WebsocketAdaptor.prototype.getStatus = function(callback) {
 	// Get status
 	let self = this,
-    params = "?wiki=" + $tw.wikiName + "&session=" + (window.sessionStorage.getItem("ws-session") || $tw.utils.uuid.NIL);
+    params = "?wiki=" + this.key + "&session=" + (window.sessionStorage.getItem("ws-session") || $tw.utils.uuid.NIL);
   this.logger.log("Getting status");
 	$tw.utils.httpRequest({
 		url: this.host + "status" + params,
@@ -109,7 +127,7 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
           let options = {
             id: json["session_id"],
             doc: self.doc,
-            wikiName: $tw.wikiName,
+            pathPrefix: this.pathPrefix,
             username: json.username,
             isAnonymous: self.isAnonymous,
             isLoggedIn: self.isLoggedIn,
@@ -120,7 +138,7 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
             ip: json.ip,
             url: new URL(self.host)
           }
-          options.url.searchParams.append("wiki", $tw.wikiName);
+          options.url.searchParams.append("wiki", this.key);
           options.url.searchParams.append("session", json["session_id"]);
           self.session = new WebsocketSession(options);
           // Set the session id
@@ -183,7 +201,7 @@ WebsocketAdaptor.prototype.login = function(username,password,callback) {
 */
 WebsocketAdaptor.prototype.logout = function(callback) {
   let self = this,
-    params = "?wiki=" + $tw.wikiName + "&session=" + (window.sessionStorage.getItem("ws-session") || $tw.utils.uuid.NIL);
+    params = "?wiki=" + this.key + "&session=" + (window.sessionStorage.getItem("ws-session") || $tw.utils.uuid.NIL);
   this.session.destroy()
   this.session = null;
 	let options = {
@@ -266,7 +284,7 @@ WebsocketAdaptor.prototype.loadTiddler = function(title,callback) {
       callback(null,null);
     }
   } catch (error) {
-    $tw.utils.error(error);
+    $tw.utils.warning(error);
     callback($tw.language.getString("Error/XMLHttpRequest") + ": 0");
   }
 }

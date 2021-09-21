@@ -14,12 +14,16 @@ A sync adaptor module for synchronising with the local filesystem via node.js AP
 // Get a reference to the file system
 const fs = $tw.node ? require("fs") : null,
 	path = $tw.node ? require("path") : null,
-    FileSystemAdaptor = require("$:/plugins/tiddlywiki/filesystem/filesystemadaptor.js").adaptorClass;
+    FileSystemAdaptor = require("$:/plugins/tiddlywiki/filesystem/filesystemadaptor.js").adaptorClass,
+	CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host",
+	DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
 
 function WebsocketAdaptor(options) {
 	var self = this;
 	this.wiki = options.wiki;
 	this.boot = options.boot || $tw.boot;
+	this.pathPrefix = this.getPathPrefix();
+	this.key = this.getKey();
 	this.logger = new $tw.utils.Logger("node-wsadaptor",{colour: "blue"});
 
 	// Attach a core filesystemadaptor to this syncadaptor
@@ -29,7 +33,7 @@ function WebsocketAdaptor(options) {
 	this.gcEnabled = process.env.GC !== 'false' && process.env.GC !== '0';
 
 	// Setup the YDoc for the wiki
-	let wikiDoc = $tw.utils.getYDoc(wikiName);
+	let wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
 	let wikiTitles = wikiDoc.getArray("wikiTitles");
 	let wikiTiddlers = wikiDoc.getArray("wikiTiddlers");
 	let wikiTombstones = wikiDoc.getArray("wikiTombstones");
@@ -167,6 +171,22 @@ WebsocketAdaptor.prototype.setLoggerSaveBuffer = function(loggerForSaving) {
 WebsocketAdaptor.prototype.isReady = function() {
 	return this.session && this.session.isReady();
 };
+
+WebsocketAdaptor.prototype.getPathPrefix = function() {
+	let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER);
+	text.replace(/\/$/, '');
+	text.replace(/\$protocol\$\/\/\$host\$/, '');
+	return text;
+}
+
+WebsocketAdaptor.prototype.getKey = function() {
+	let key = $tw.utils.uuid.NIL,
+	  tiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER);
+	if(tiddler) {
+	  key = $tw.utils.uuid.validate(tiddler.fields.key) && tiddler.fields.key;
+	}
+	return key;
+  }
 
 WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {
 	//Returns the existing fileInfo for the tiddler. To regenerate, call getTiddlerFileInfo().

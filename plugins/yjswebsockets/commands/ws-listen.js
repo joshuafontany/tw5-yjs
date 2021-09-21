@@ -19,7 +19,7 @@ exports.info = {
 };
 
 const MultiServer = require('$:/plugins/commons/multiserver/multiserver.js').MultiServer,
-    WebSocketServer = require('../server/wsserver.js').WebSocketServer;
+    WebSocketServer = require('../wsserver.js').WebSocketServer;
 
 const Command = function(params,commander,callback) {
   let self = this;
