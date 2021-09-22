@@ -37,7 +37,7 @@ exports.handler = function(request,response,state) {debugger;
         isAnonymous: !state.authenticatedUsername,
         isLoggedIn: !!state.authenticatedUsername,
         access: state.server.getUserAccess((!state.authenticatedUsername)? null: state.authenticatedUsername,state.pathPrefix),
-        doc: $tw.wsServer.getYDoc(state.queryParameters["wiki"]),
+        doc: $tw.utils.getYDoc(state.queryParameters["wiki"]),
         client: false,
         connect: false,
         ip: conectionIp,

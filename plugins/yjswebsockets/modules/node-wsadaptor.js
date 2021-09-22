@@ -24,7 +24,7 @@ function WebsocketAdaptor(options) {
 	this.boot = options.boot || $tw.boot;
 	this.pathPrefix = this.getPathPrefix();
 	this.key = this.getKey();
-	this.logger = new $tw.utils.Logger("node-wsadaptor",{colour: "blue"});
+	this.logger = new $tw.utils.Logger("wsadaptor",{colour: "blue"});
 
 	// Attach a core filesystemadaptor to this syncadaptor
     this.fsadaptor = new FileSystemAdaptor(options);

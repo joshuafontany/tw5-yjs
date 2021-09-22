@@ -51,7 +51,25 @@ Command.prototype.execute = function() {
   $tw.wsServer = new WebSocketServer({
     clientTracking: false, 
     noServer: true, // We roll our own Upgrade
-    server: nodeServer
+    httpserver: nodeServer,
+    persistenceDir: this.server.get('y-persistence')
+  });
+  // Handle upgrade events
+  nodeServer.on('upgrade',function(request,socket,head) {
+    if(request.headers.upgrade === 'websocket') {debugger;
+      // Verify the client here
+      let state = $tw.wsServer.verifyUpgrade(request);
+      if(state){
+        $tw.wsServer.handleUpgrade(request,socket,head,function(ws) {
+          $tw.wsServer.emit('connection',ws,request,state);
+        });
+      } else {
+        $tw.utils.log(`ws-server: Unauthorized Upgrade GET ${request.url}`);
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+    }
   });
   $tw.utils.log(`TiddlyWiki v${$tw.version} with TW5-Yjs Websockets`);
 	$tw.hooks.invokeHook("th-server-command-post-start",this.server,nodeServer,"tiddlywiki");

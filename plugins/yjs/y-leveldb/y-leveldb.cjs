@@ -10,7 +10,7 @@ var decoding = require('./lib0/dist/decoding.cjs');
 var binary = require('./lib0/dist/binary.cjs');
 var promise = require('./lib0/dist/promise.cjs');
 var buffer = require('./lib0/dist/buffer.cjs');
-var defaultLevel = _interopDefault(require('level'));
+var defaultLevel = _interopDefault(require('./level'));
 var buffer$1 = require('buffer');
 
 const PREFERRED_TRIM_SIZE = 500;

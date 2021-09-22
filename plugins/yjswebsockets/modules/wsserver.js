@@ -26,7 +26,7 @@ function WebSocketServer(options) {
   Object.assign(this, new WS.Server(options));
   // Setup the httpServer
   let self = this;
-  this.server = options.server || null;
+  this.httpserver = options.httpserver || null;
   // Users
   this.anonId = 0; // Incremented when an anonymous userid is created
   // Setup a sessions Map
@@ -35,7 +35,8 @@ function WebSocketServer(options) {
   this.on('listening',this.serverOpened);
   this.on('close',this.serverClosed);
   this.on('connection',this.handleWSConnection);
-  if(this.server){
+  // Upgrade event handlers
+  if(this.httpserver){
     // Add an api key to all wikis
     $tw.states.forEach(function(state,pathPrefix) {
       // Setup the config api key.
@@ -46,39 +47,22 @@ function WebSocketServer(options) {
         };
         state.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
     })
-    // Handle upgrade events
-    this.server.on('upgrade',function(request,socket,head) {
-      if(request.headers.upgrade === 'websocket') {
-        // Verify the client here
-        let state = self.verifyUpgrade(request);
-        if(state){
-          self.handleUpgrade(request,socket,head,function(ws) {
-            self.emit('connection',ws,request,state);
-          });
-        } else {
-          $tw.utils.log(`ws-server: Unauthorized Upgrade GET ${request.url}`);
-          socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-          socket.destroy();
-          return;
-        }
-      }
-    });
   }
-
-  if (typeof options.persistenceDir === 'string') {
+  // Persistence
+  this.persistenceDir = options.persistenceDir;
+  if (false && typeof this.persistenceDir === 'string') {
     $tw.utils.log('Persisting Y documents to "' + options.persistenceDir + '"')
-    // @ts-ignore
-    const LeveldbPersistence = require('y-leveldb').LeveldbPersistence
+    const LeveldbPersistence = require('./y-leveldb.cjs').LeveldbPersistence
     const ldb = new LeveldbPersistence(options.persistenceDir)
-    this.persistence = {
+    $tw.ypersistence = {
       provider: ldb,
       bindState: async (docName,ydoc) => {
         const persistedYdoc = await ldb.getYDoc(docName)
         const newUpdates = Y.encodeStateAsUpdate(ydoc)
-        ldb.storeUpdate(docName, newUpdates)
-        Y.applyUpdate(ydoc, Y.encodeStateAsUpdate(persistedYdoc))
-        ydoc.on('update', update => {
-          ldb.storeUpdate(docName, update)
+        ldb.storeUpdate(docName,newUpdates)
+        Y.applyUpdate(ydoc,Y.encodeStateAsUpdate(persistedYdoc))
+        ydoc.on('update',update => {
+          ldb.storeUpdate(docName,update)
         })
       },
       writeState: async (docName, ydoc) => {}
@@ -102,44 +86,42 @@ WebSocketServer.prototype.serverClosed = function() {
 }
 
 WebSocketServer.prototype.verifyUpgrade = function(request) {
-  if(request.url.indexOf("wiki=") !== -1
-  && request.url.indexOf("session=") !== -1) {
-    // Compose the state object
-    var state = {};
-    state.server = this.server;
-    state.ip = request.headers['x-forwarded-for'] ? request.headers['x-forwarded-for'].split(/\s*,\s*/)[0]:
-      request.connection.remoteAddress;
-    state.serverAddress = this.server.protocol + "://" + this.server.httpServer.address().address + ":" + this.server.httpServer.address().port;
-    state.urlInfo = new URL(request.url,state.serverAddress);
-    //state.pathPrefix = request.pathPrefix || this.get("path-prefix") || "";
-    // Get the principals authorized to access this resource
-    var authorizationType = "readers";
-    // Check whether anonymous access is granted
-    state.allowAnon = this.server.isAuthorized(authorizationType,null);
-    // Authenticate with the first active authenticator
-    let fakeResponse = {
-      writeHead: function(){},
-      end: function(){}
-    }
-    if(this.server.authenticators.length > 0) {
-      if(!this.server.authenticators[0].authenticateRequest(request,fakeResponse,state)) {
-        // Bail if we failed (the authenticator will have -not- sent the response)
-        return false;
-      }		
-    }
-    // Authorize with the authenticated username
-    if(!this.server.isAuthorized(authorizationType,state.authenticatedUsername)) {
+  if(request.url.indexOf("wiki=") == -1 || request.url.indexOf("session=") == -1) {
+    return false
+  }
+  // Compose the state object
+  var state = {};
+  state.server = this.httpserver;
+  state.ip = request.headers['x-forwarded-for'] ? request.headers['x-forwarded-for'].split(/\s*,\s*/)[0]:
+    request.connection.remoteAddress;
+  state.serverAddress = this.httpserver.protocol + "://" + this.httpserver.address().address + ":" + this.httpserver.address().port;
+  state.urlInfo = new URL(request.url,state.serverAddress);
+  //state.pathPrefix = request.pathPrefix || this.get("path-prefix") || "";
+  // Get the principals authorized to access this resource
+  state.authorizationType = "readers";
+  // Check whether anonymous access is granted
+  state.allowAnon = this.httpserver.isAuthorized(authorizationType,null);
+  // Authenticate with the first active authenticator
+  let fakeResponse = {
+    writeHead: function(){},
+    end: function(){}
+  }
+  if(this.httpserver.authenticators.length > 0) {
+    if(!this.httpserver.authenticators[0].authenticateRequest(request,fakeResponse,state)) {
+      // Bail if we failed (the authenticator will have -not- sent the response)
       return false;
-    }
-    state.sessionId = state.urlInfo.searchParams.get("session");
-    if(this.hasSession(state.sessionId)) {
-      let session = this.getSession(state.sessionId);
-      return state.authenticatedUsername == session.username
-        && state.pathPrefix == session.pathPrefix
-        && state
-    }
-  } else {
+    }		
+  }
+  // Authorize with the authenticated username
+  if(!this.httpserver.isAuthorized(authorizationType,state.authenticatedUsername)) {
     return false;
+  }
+  state.sessionId = state.urlInfo.searchParams.get("session");
+  if(this.hasSession(state.sessionId)) {
+    let session = this.getSession(state.sessionId);
+    return state.authenticatedUsername == session.username
+      && state.pathPrefix == session.pathPrefix
+      && state
   }
 };
 
@@ -333,18 +315,22 @@ WebSocketServer.prototype.getAnonUsername = function(state) {
   Session methods
 */
 WebSocketServer.prototype.newSession = function(options) {
-  if(options.id !== $tw.utils.uuid.NIL) {
-    let session = new WebsocketSession(options);
-    if(session) {
-      this.setSession(session);
-    }
-    return session
+  if(this.hasSession(options.id)) {
+    return this.getSession(options.id);
   }
+  if(options.id == $tw.utils.uuid.NIL) {
+    options.id = $tw.utils.uuid.v4();
+  }
+  let session = new WebsocketSession(options);
+  if(session) {
+    this.setSession(session);
+  }
+  return session
 }
 
 WebSocketServer.prototype.setSession = function(session) {
   if(session.id !== $tw.utils.uuid.NIL) {
-    return $tw.sessions.set(sessionId);
+    return $tw.sessions.set(session.id,session);
   }
 }
 

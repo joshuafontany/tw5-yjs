@@ -23,19 +23,21 @@ function MultiServer(options) {
   // Initialise the server settings
   let settings;
   try {
-    settings = JSON.parse(fs.readFileSync(path.join($tw.boot.wikiPath, 'settings', 'settings.json')));
+    settings = JSON.parse(fs.readFileSync(path.join($tw.boot.wikiPath, "settings", "settings.json")));
   } catch (err) {
-    $tw.utils.log('Server Settings Error - using default values.');
+    $tw.utils.log("Server Settings Error - using default values.");
     settings = {};
   }
-  settings = $tw.utils.extend(options.wiki.getTiddlerData('$:/config/commons/multiserver',{}),settings);
+  settings = $tw.utils.extend(options.wiki.getTiddlerData("$:/config/commons/multiserver",{}),settings);
   options.variables = $tw.utils.extend(settings,options.variables);
   Server.call(this, options);
   // Initialise admin authorization principles
 	var authorizedUserName = (this.get("username") && this.get("password")) ? this.get("username") : null;
-  this.authorizationPrincipals['admin'] = (this.get("admin") || authorizedUserName).split(',').map($tw.utils.trim);
+  this.authorizationPrincipals["admin"] = (this.get("admin") || authorizedUserName).split(',').map($tw.utils.trim);
+  // Set the $tw.pathPrefix
+  $tw.pathPrefix = this.get("path-prefix") || "";
   // Add all the routes, this also loads and adds authorization priciples for each wiki
-  this.addWikiRoutes($tw.pathPrefix || "");
+  this.addWikiRoutes($tw.pathPrefix);
 }
 
 MultiServer.prototype = Object.create(Server.prototype);
@@ -78,14 +80,14 @@ MultiServer.prototype.requestHandler = function(request,response,options) {
     return
   }
   // Check for a wikiState route
-  options = this.findStateByRoute(request,options);
+  options = this.findStateOptions(request,options);
   // Call the parent method
   Object.getPrototypeOf(MultiServer.prototype).requestHandler.call(this,request,response,options);
 };
 
-MultiServer.prototype.findStateByRoute = function(request,options) {
+MultiServer.prototype.findStateOptions = function(request,options) {
   options = options || {};
-  let potentialMatch = {};
+  let potentialMatch = $tw;
   $tw.states.forEach(function(state,key) {
     var match = Object.prototype.toString.call(state.regexp) == '[object RegExp]' && state.regexp.exec(request.url);
     if(match) {
@@ -95,13 +97,16 @@ MultiServer.prototype.findStateByRoute = function(request,options) {
   options.boot = potentialMatch.boot;
   options.pathPrefix = potentialMatch.pathPrefix;
   options.wiki = potentialMatch.wiki;
+  if(potentialMatch.pathPrefix) {
+		options.authorizationType = potentialMatch.pathPrefix+"/"+(this.methodMappings[request.method] || "readers");
+	}
 	return options;
 };
 
 /*
   Load each wiki. Log each wiki's authorizationPrincipals as `${state.pathPrefix}/readers` & `${state.pathPrefix}/writers`.
 */
-MultiServer.prototype.addWikiRoutes = function(pathPrefix,wikisPrefix) {
+MultiServer.prototype.addWikiRoutes = function(pathPrefix) {
   let self = this,
       readers = this.authorizationPrincipals["readers"],
       writers = this.authorizationPrincipals["writers"];

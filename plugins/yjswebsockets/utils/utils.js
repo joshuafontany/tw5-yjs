@@ -15,8 +15,8 @@ Various yjs utility functions.
 const map = require('../lib0/dist/map.cjs');
 const WikiDoc = require('../wikidoc.js').WikiDoc;
 
-// YDocs
-$tw.YDocs = new Map();
+// Y Docs
+$tw.ydocs = new Map();
 
 /**
  * Gets a Y.Doc by name, whether in memory or on disk
@@ -26,15 +26,15 @@ $tw.YDocs = new Map();
  * @return {Y.Doc}
  */
 exports.getYDoc = function(docname,gc = $tw.node? $tw.wsServer && $tw.wsServer.gcEnabled: $tw.syncadaptor && $tw.syncadaptor.gcEnabled) {
-    return map.setIfUndefined($tw.YDocs, docname, () => {
+    return map.setIfUndefined($tw.ydocs, docname, () => {
         const doc = new WikiDoc(docname);
         // disable gc when using snapshots!
         doc.gc = gc;
         doc.name = docname;
-        if ($tw.node? $tw.wsServer && $tw.wsServer.persistence !== null: $tw.syncadaptor && $tw.syncadaptor.persistence !== null) {
-            $tw.node? $tw.wsServer.persistence.bindState(docname,doc): $tw.syncadaptor.persistence.bindState(docname,doc);
+        if (!!$tw.ypersistence) {
+            $tw.ypersistence.bindState(docname,doc)
         }
-        $tw.YDocs.set(docname,doc);
+        $tw.ydocs.set(docname,doc);
         return doc;
     })
 }

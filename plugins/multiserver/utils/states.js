@@ -15,11 +15,13 @@ const fs = require('fs'),
     path = require('path'),
     widget = require("$:/core/modules/widgets/widget.js");
 
+$tw.states = new Map();
+
 // State methods
-function State(serveInfo,pathPrefix,wikisPrefix) {
-    let self = this,
-        encodedName = encodeURIComponent(serveInfo.name),
-        routePrefix = pathPrefix? `/${pathPrefix}/${wikisPrefix}/`: `/${wikisPrefix}/`;
+function State(serveInfo,pathPrefix,groupPrefix) {
+    let self = this;
+    serveInfo.encodedName = encodeURIComponent(serveInfo.name);
+    serveInfo.routePrefix = pathPrefix? `/${pathPrefix}/${groupPrefix}/`: `/${groupPrefix}/`;
     this.boot = {
             files: [],
             wikiInfo: null,
@@ -27,8 +29,8 @@ function State(serveInfo,pathPrefix,wikisPrefix) {
             wikiTiddlersPath: null
         };
     this.serveInfo = serveInfo;
-    this.pathPrefix = routePrefix + encodedName;
-    this.regexp = new RegExp(`^${routePrefix}(${encodedName})/?(.+)?$`);
+    this.pathPrefix = serveInfo.routePrefix + serveInfo.encodedName;
+    this.regexp = new RegExp(`^${serveInfo.routePrefix}(${serveInfo.encodedName})/?(.+)?$`);
 
     this.wiki = new $tw.Wiki();
 
@@ -266,8 +268,7 @@ State.prototype.loadWikiTiddlersNode = function(wikiPath,options) {
 /*
     This function loads a wiki into a named state object.
 */
-exports.loadStateWiki = function(serveInfo,pathPrefix,wikisPrefix) {
-    $tw.states = $tw.states || new Map();
+exports.loadStateWiki = function(serveInfo,pathPrefix,groupPrefix) {
     if(typeof serveInfo === "string") {
         serveInfo = {
             name: path.basename(serveInfo),
@@ -275,15 +276,23 @@ exports.loadStateWiki = function(serveInfo,pathPrefix,wikisPrefix) {
         };
     }
     let state = null,
-        finalPath = path.resolve($tw.boot.wikiPath,serveInfo.path)
+        finalPath = path.resolve($tw.boot.wikiPath,serveInfo.path),
+        loaded = $tw.utils.hasStateWiki(serveInfo.name);
     if(!$tw.utils.isDirectory(finalPath)) {
-        $tw.utils.log("loadWikiState error, serveInfo: "+JSON.stringify(serveInfo,null,2));
+        $tw.utils.warning("loadWikiState error, serveInfo: "+JSON.stringify(serveInfo,null,2));
         serveInfo = null;
     }
+    // Check for duplicates, we can't serve the same wiki at two different paths
+    $tw.states.forEach(function(state,name) {
+        if(finalPath == path.resolve($tw.boot.wikiPath,state.serveInfo.path)) {
+            $tw.utils.warning("loadWikiState duplicate, serveInfo: "+JSON.stringify(serveInfo,null,2));
+            loaded = true;
+        }
+    })
     // Make sure it isn't loaded already
-    if(serveInfo && !$tw.utils.hasStateWiki(serveInfo.name)) {
+    if(serveInfo && !loaded) {
         //setup the tiddlywiki state instance
-        state = new State(serveInfo,pathPrefix,wikisPrefix);
+        state = new State(serveInfo,pathPrefix,groupPrefix);
         // Set the wiki as loaded
         $tw.utils.setStateWiki(serveInfo.name,state);
         $tw.hooks.invokeHook('wiki-loaded',serveInfo.name);

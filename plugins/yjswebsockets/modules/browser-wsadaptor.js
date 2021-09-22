@@ -32,7 +32,19 @@ function WebsocketAdaptor(options) {
   /**
    * @type {{bindState: function(string,WikiDoc):void, writeState:function(string,WikiDoc):Promise<any>, provider: any}|null}
    */
-  this.persistence = null;
+   $tw.utils.log('Persisting Y documents to y-indexeddb')
+   $tw.idbs = new Map()
+   $tw.ypersistence = {
+     provider: require('./y-indexeddb.cjs').IndexeddbPersistence,
+     bindState: (docName,ydoc) => {
+        let indexeddbProvider = new $tw.ypersistence.provider(docName,ydoc);
+        indexeddbProvider.on('destroy',() => {
+          $tw.syncadaptor.idbs.delete(docName);
+        });
+        $tw.idbs.set(docName,indexeddbProvider);
+     },
+     writeState: (docName, ydoc) => {}
+   }
   this.gcEnabled = true;
   this.doc = $tw.utils.getYDoc(this.pathPrefix);
 }
@@ -41,7 +53,7 @@ function WebsocketAdaptor(options) {
 
 // REQUIRED
 // The name of the syncadaptor
-WebsocketAdaptor.prototype.name = "browser-wsadaptor";
+WebsocketAdaptor.prototype.name = "wsadaptor";
 
 WebsocketAdaptor.prototype.supportsLazyLoading = false;
 
