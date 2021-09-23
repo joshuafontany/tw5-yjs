@@ -51,14 +51,16 @@ Command.prototype.execute = function() {
   $tw.wsServer = new WebSocketServer({
     clientTracking: false, 
     noServer: true, // We roll our own Upgrade
-    httpserver: nodeServer,
+    httpServer: nodeServer,
     persistenceDir: this.server.get('y-persistence')
   });
   // Handle upgrade events
   nodeServer.on('upgrade',function(request,socket,head) {
-    if(request.headers.upgrade === 'websocket') {debugger;
+    if(request.headers.upgrade === 'websocket') {
       // Verify the client here
-      let state = $tw.wsServer.verifyUpgrade(request);
+      let options = self.server.findStateOptions(request)
+      options.server = self.server;
+      let state = $tw.wsServer.verifyUpgrade(request,options);
       if(state){
         $tw.wsServer.handleUpgrade(request,socket,head,function(ws) {
           $tw.wsServer.emit('connection',ws,request,state);

@@ -34,10 +34,10 @@ function MultiServer(options) {
   // Initialise admin authorization principles
 	var authorizedUserName = (this.get("username") && this.get("password")) ? this.get("username") : null;
   this.authorizationPrincipals["admin"] = (this.get("admin") || authorizedUserName).split(',').map($tw.utils.trim);
-  // Set the $tw.pathPrefix
-  $tw.pathPrefix = this.get("path-prefix") || "";
+  // Setup the root route
+  $tw.utils.loadSateRoot(this.get("path-prefix") || "");
   // Add all the routes, this also loads and adds authorization priciples for each wiki
-  this.addWikiRoutes($tw.pathPrefix);
+  this.addWikiRoutes($tw.boot.pathPrefix);
 }
 
 MultiServer.prototype = Object.create(Server.prototype);
@@ -95,22 +95,22 @@ MultiServer.prototype.findStateOptions = function(request,options) {
     }
   });
   options.boot = potentialMatch.boot;
-  options.pathPrefix = potentialMatch.pathPrefix;
   options.wiki = potentialMatch.wiki;
-  if(potentialMatch.pathPrefix) {
-		options.authorizationType = potentialMatch.pathPrefix+"/"+(this.methodMappings[request.method] || "readers");
+  options.pathPrefix = potentialMatch.boot.pathPrefix;
+  if(potentialMatch.boot.pathPrefix) {
+		options.authorizationType = potentialMatch.boot.pathPrefix+"/"+(this.methodMappings[request.method] || "readers");
 	}
 	return options;
 };
 
 /*
-  Load each wiki. Log each wiki's authorizationPrincipals as `${state.pathPrefix}/readers` & `${state.pathPrefix}/writers`.
+  Load each wiki. Log each wiki's authorizationPrincipals as `${state.boot.pathPrefix}/readers` & `${state.boot.pathPrefix}/writers`.
 */
 MultiServer.prototype.addWikiRoutes = function(pathPrefix) {
   let self = this,
       readers = this.authorizationPrincipals["readers"],
       writers = this.authorizationPrincipals["writers"];
-  // Setup the routes
+  // Setup the other routes
   $tw.utils.each($tw.boot.wikiInfo.serveWikis,function(group,groupPrefix){
     $tw.utils.each(group,function(serveInfo) {
       let state = $tw.utils.loadStateWiki(serveInfo,pathPrefix,groupPrefix);
@@ -122,9 +122,9 @@ MultiServer.prototype.addWikiRoutes = function(pathPrefix) {
         if(!!serveInfo.writers) {
           writers = serveInfo.writers.split(',').map($tw.utils.trim);
         }
-        self.authorizationPrincipals[`${state.pathPrefix}/readers`] = readers;
-        self.authorizationPrincipals[`${state.pathPrefix}/writers`] = writers;
-        $tw.utils.log("Added route " + String(state.pathPrefix));
+        self.authorizationPrincipals[`${state.boot.pathPrefix}/readers`] = readers;
+        self.authorizationPrincipals[`${state.boot.pathPrefix}/writers`] = writers;
+        $tw.utils.log("Added route " + state.boot.pathPrefix);
       };
     });
   });

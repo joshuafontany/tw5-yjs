@@ -80,8 +80,7 @@ WebsocketAdaptor.prototype.getHost = function() {
 
 WebsocketAdaptor.prototype.getPathPrefix = function() {
   let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER);
-  text.replace(/\/$/, '');
-  text.replace(/\$protocol\$\/\/\$host\$/, '');
+  text = text.replace(/\/$/,'').replace(/\$protocol\$\/\/\$host\$/,'');
   return text;
 }
 
@@ -130,16 +129,16 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 				self.isReadOnly = !!json["read_only"];
 				self.isAnonymous = !!json.anonymous;
 
-        if(this.session && json["session_id"] && this.session.id == json["session_id"]) {
-          this.session.connect()
+        if(self.session && json["session_id"] && self.session.id == json["session_id"]) {
+          self.session.connect()
         } else if(json["session_id"]) {
           // Destroy the old session
-          this.session && this.session.destroy();
+          self.session && self.session.destroy();
           // Setup the session
           let options = {
             id: json["session_id"],
-            doc: self.doc,
-            pathPrefix: this.pathPrefix,
+            key: self.key,
+            pathPrefix: self.pathPrefix,
             username: json.username,
             isAnonymous: self.isAnonymous,
             isLoggedIn: self.isLoggedIn,
@@ -150,7 +149,7 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
             ip: json.ip,
             url: new URL(self.host)
           }
-          options.url.searchParams.append("wiki", this.key);
+          options.url.searchParams.append("wiki", self.key);
           options.url.searchParams.append("session", json["session_id"]);
           self.session = new WebsocketSession(options);
           // Set the session id
@@ -310,11 +309,11 @@ WebsocketAdaptor.prototype.deleteTiddler = function(title,callback,options) {
   let tiddlerIndex = wikiTitles.toArray().indexOf(title);
   let tsIndex = wikiTombstones.toArray().indexOf(title);
   this.doc.transact(() => {
-    if (tiddlerIndex !== -1 ) {
+    if(tiddlerIndex !== -1 ) {
       wikiTitles.delete(tiddlerIndex,1);
       wikiTiddlers.delete(tiddlerIndex,1);
     }
-    if (tsIndex == -1) {
+    if(tsIndex == -1) {
       wikiTombstones.push([title]);
     }
   },this.wiki);

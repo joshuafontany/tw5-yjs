@@ -25,13 +25,13 @@ $tw.ydocs = new Map();
  * @param {boolean} gc - whether to allow gc on the doc (applies only when created)
  * @return {Y.Doc}
  */
-exports.getYDoc = function(docname,gc = $tw.node? $tw.wsServer && $tw.wsServer.gcEnabled: $tw.syncadaptor && $tw.syncadaptor.gcEnabled) {
+exports.getYDoc = function(docname = '/',gc = $tw.node? $tw.wsServer && $tw.wsServer.gcEnabled: $tw.syncadaptor && $tw.syncadaptor.gcEnabled) {
     return map.setIfUndefined($tw.ydocs, docname, () => {
         const doc = new WikiDoc(docname);
         // disable gc when using snapshots!
         doc.gc = gc;
         doc.name = docname;
-        if (!!$tw.ypersistence) {
+        if(!!$tw.ypersistence) {
             $tw.ypersistence.bindState(docname,doc)
         }
         $tw.ydocs.set(docname,doc);

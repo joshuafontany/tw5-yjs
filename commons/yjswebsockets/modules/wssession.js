@@ -48,7 +48,7 @@ const messageHandlers = [];
 messageHandlers[messageSync] = (encoder, decoder, session, doc, emitSynced, messageType) => {
   encoding.writeVarUint(encoder, messageSync);
   const syncMessageType = syncProtocol.readSyncMessage(decoder, encoder, doc, session.id);
-  if (emitSynced && syncMessageType === syncProtocol.messageYjsSyncStep2 && !session.synced) {
+  if(emitSynced && syncMessageType === syncProtocol.messageYjsSyncStep2 && !session.synced) {
     session.synced = true;
   }
 };
@@ -81,7 +81,7 @@ messageHandlers[messageHandshake] = (encoder, decoder, session, doc, emitSynced,
   syncProtocol.writeSyncStep1(encoderSync, doc)
   session.send(encoderSync,session.pathPrefix);
   // broadcast local awareness state
-  if (session.awareness.getLocalState() !== null) {
+  if(session.awareness.getLocalState() !== null) {
     const encoderAwarenessState = encoding.createEncoder();
     encoding.writeVarUint(encoderAwarenessState, messageAwareness);
     encoding.writeVarUint8Array(encoderAwarenessState, awarenessProtocol.encodeAwarenessUpdate(session.awareness, [session.doc.clientID]));
@@ -100,7 +100,7 @@ messageHandlers[messageHeartbeat] = (encoder, decoder, session, doc, emitSynced,
     encoding.writeVarUint(encoderHeartbeat, messageHeartbeat)
     encoding.writeVarUint(encoderHeartbeat, 1)
     session.send(encoderHeartbeat,session.pathPrefix);
-  } else if (heartbeatType == 1) {
+  } else if(heartbeatType == 1) {
     // Incoming pong, setup a heartbeat
     session.heartbeat();
   }
@@ -116,7 +116,7 @@ const permissionDeniedHandler = (session, reason) => $tw.utils.warning(`[${sessi
  * @param {WebsocketSession} session
  */
 const setupWS = (session) => {
-  if (session.shouldConnect && session.ws === null) {
+  if(session.shouldConnect && session.ws === null) {
     /**
      * @type {any}
      */
@@ -134,7 +134,7 @@ const setupWS = (session) => {
 
     websocket.onmessage = event => {
       let message;
-      if (!!event.data) {
+      if(!!event.data) {
         message = new Uint8Array(event.data);
       } else {
         message = new Uint8Array(event);
@@ -146,12 +146,12 @@ const setupWS = (session) => {
         const eventDoc = session.getSubDoc(decoding.readAny(decoder));
         const messageType = decoding.readVarUint(decoder);
         const messageHandler = session.messageHandlers[messageType];
-        if (/** @type {any} */ (messageHandler)) {
+        if(/** @type {any} */ (messageHandler)) {
           messageHandler(encoder, decoder, session, eventDoc, true, messageType);
         } else {
           $tw.utils.warning(`['${session.id}'] Unable to compute message, ydoc ${message.doc}`);
         }
-        if (encoding.length(encoder) > 1) {
+        if(encoding.length(encoder) > 1) {
           session.send(encoder,eventDoc.name);
         }
       } else {
@@ -259,7 +259,6 @@ const setupHeartbeat = (session) => {
    * @param {string} [options.id] A unique session id
    * @param {string} [options.key] The "room key"
    * @param {string} [options.pathPrefix] The "room name"
-   * @param {Y.doc} [options.doc]
    * @param {boolean} [options.connect]
    * @param {awarenessProtocol.Awareness} [options.awareness]
    * @param {boolean} [options.client] Is this a "client" session?
@@ -273,25 +272,19 @@ const setupHeartbeat = (session) => {
    * @param {boolean} [options.isAnonymous] The User's anon stat
    */
   constructor (options) {
-    if (!options.id || !$tw.utils.uuid.validate(options.id) || options.id == $tw.utils.uuid.NIL) {
+    if(!options.id || !$tw.utils.uuid.validate(options.id) || options.id == $tw.utils.uuid.NIL) {
       throw new Error("WebsocketSession Error: invalid options.id provided in constructor.")
-    }
-    if (options.client && !options.doc) {
-      throw new Error("WebsocketSession Error: no options.doc provided in constructor.")
     }
     super();
     this.id = options.id;  // Required $tw.utils.uuid.v4()
     this.key = options.key; // Required $tw.utils.uuid.v4()
     this.pathPrefix = options.pathPrefix;
-    this.doc = null;
-    this.awareness = null;
-
-    this.ping = null; // heartbeat
-    this.pingTimeout = null; // heartbeat timeout
-    this.connected = false;
-    this.connecting = false;
-    this.unsuccessfulReconnects = 0;
-    this.messageHandlers = messageHandlers.slice();
+    this.username = options.username;
+    this.isAnonymous = options.isAnonymous;
+    this.isLoggedIn = options.isLoggedIn;
+    this.isReadOnly = options.isReadOnly;
+    this.access = options.access;
+    this.client = !!options.client;
     /**
      * @type {boolean}
      */
@@ -303,18 +296,16 @@ const setupHeartbeat = (session) => {
     this.lastMessageReceived = 0;
 
     // Config
-
-    this.binaryType = options.binaryType || "arraybuffer";
-    this.client = !!options.client;
-    this.access = options.access;
-    this.username = options.username;
-    this.isAnonymous = options.isAnonymous;
-    this.isLoggedIn = options.isLoggedIn;
-    this.isReadOnly = options.isReadOnly;
+    this.binaryType = options.binaryType || "arraybuffer"; 
     this.expires = options.expires || time.getUnixTime();
     this.ip = options.ip;
     this.url = this.client? this.getHostURL(options.url): options.url;
-    
+    this.ping = null; // heartbeat
+    this.pingTimeout = null; // heartbeat timeout
+    this.connected = false;
+    this.connecting = false;
+    this.unsuccessfulReconnects = 0;
+    this.messageHandlers = messageHandlers.slice();
     if(this.client) {
       let connect = typeof options.connect !== 'undefined' && typeof options.connect !== 'null' ? options.connect : true;
       /**
@@ -323,8 +314,8 @@ const setupHeartbeat = (session) => {
        */
       this.shouldConnect = connect;
       this.settings = $tw.wiki.getTiddlerData("$:/config/commons/yjs/wssession",{});
-      this.doc = options.doc; // Required Y.doc reference
-      let awareness = options.awareness || new awarenessProtocol.Awareness(options.doc); // Y.doc awareness
+      this.doc = $tw.utils.getYDoc(options.pathPrefix);
+      let awareness = options.awareness || new awarenessProtocol.Awareness(this.doc); // Y.doc awareness
 
       // Browser features
       if($tw.browser){
@@ -340,7 +331,7 @@ const setupHeartbeat = (session) => {
        * @param {any} origin
        */
       this._updateHandler = (update,origin) => {
-        if (origin !== this) {
+        if(origin !== this) {
           const encoder = encoding.createEncoder();
           encoding.writeVarUint(encoder, messageSync);
           syncProtocol.writeUpdate(encoder, update);
@@ -362,15 +353,15 @@ const setupHeartbeat = (session) => {
       awareness.on('update', this._awarenessUpdateHandler);
       this.awareness = awareness;
 
-      if (connect) {
+      if(connect) {
         this.connect();
       }
     }
   }
 
   getSubDoc(docname = null) {
-    if(this.client) {
-      return !!docname && docname !== this.doc.name ? $tw.utils.getYDoc(docname) : this.doc;
+    if(this.client && docname == this.doc.name) {
+      return this.doc;
     } else {
       return $tw.utils.getYDoc(docname);
     }
@@ -381,16 +372,16 @@ const setupHeartbeat = (session) => {
       id: this.id,
       key: this.key,
       pathPrefix: this.pathPrefix,
-      access: this.access,
-      binaryType: this.binaryType,
-      client: this.client,
-      ip: this.ip,
+      username: this.username,
       isAnonymous: this.isAnonymous,
       isLoggedIn: this.isLoggedIn,
       isReadOnly: this.isReadOnly,
-      expires: this.expires,
+      access: this.access,
+      client: this.client,
+      ip: this.ip,
       url: this.url.href || this.url.toString(),
-      username: this.username
+      binaryType: this.binaryType,
+      expires: this.expires      
     };
   }
 
@@ -402,7 +393,7 @@ const setupHeartbeat = (session) => {
   }
   
   set synced (state) {
-    if (this._synced !== state) {
+    if(this._synced !== state) {
       this._synced = state;
       this.emit('synced', [state,this]);
       this.emit('sync', [state,this]);
@@ -421,7 +412,7 @@ const setupHeartbeat = (session) => {
   disconnect (err) {
     if(this.client){
       this.shouldConnect = false;
-      if (this.isReady()) {
+      if(this.isReady()) {
         this.ws.close(1000, `['${this.id}'] Websocket closed by the client`, err);
       }
     } else {
@@ -436,7 +427,7 @@ const setupHeartbeat = (session) => {
       return;
     }
     this.shouldConnect = true;
-    if (!this.connected && this.ws === null) {
+    if(!this.connected && this.ws === null) {
       setupWS(this);
     }
   }
@@ -478,7 +469,6 @@ const setupHeartbeat = (session) => {
          * message {BinaryEncoder}
         */
         let encoder = encoding.createEncoder();
-        encoding.writeVarString(encoder,this.pathPrefix);
         encoding.writeVarString(encoder,this.id);
         encoding.writeAny(encoder,docname);
         encoding.writeBinaryEncoder(encoder,message);
@@ -498,13 +488,11 @@ const setupHeartbeat = (session) => {
   authenticateMessage (message) {
     let expired = time.getUnixTime() > this.expires,
       decoder = decoding.createDecoder(message),
-      authed = !expired 
-        && decoding.readVarString(decoder) == this.pathPrefix
-        && decoding.readVarString(decoder) == this.id;
+      authed = !expired && decoding.readVarString(decoder) == this.id;
     if(!authed) {
       $tw.utils.warning(`['${this.id}'] WS authentication error`+expired? `, session expired`:``);
     }
-    return authed && !expired? decoder : null;
+    return authed? decoder : null;
   }
 }
 

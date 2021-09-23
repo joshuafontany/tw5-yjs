@@ -18,26 +18,23 @@ const fs = require('fs'),
 $tw.states = new Map();
 
 // State methods
-function State(serveInfo,pathPrefix,groupPrefix) {
+function State(serveInfo,pathPrefix) {
     let self = this;
-    serveInfo.encodedName = encodeURIComponent(serveInfo.name);
-    serveInfo.routePrefix = pathPrefix? `/${pathPrefix}/${groupPrefix}/`: `/${groupPrefix}/`;
     this.boot = {
             files: [],
+            pathPrefix: pathPrefix,
+            regexp: new RegExp(`^(${pathPrefix})/?(.+)?$`),
+            serveInfo: serveInfo,            
             wikiInfo: null,
             wikiPath: path.resolve($tw.boot.wikiPath,serveInfo.path),
             wikiTiddlersPath: null
         };
-    this.serveInfo = serveInfo;
-    this.pathPrefix = serveInfo.routePrefix + serveInfo.encodedName;
-    this.regexp = new RegExp(`^${serveInfo.routePrefix}(${serveInfo.encodedName})/?(.+)?$`);
-
     this.wiki = new $tw.Wiki();
 
     // Setup the config prefix path. For backwards compatibility we use $:/config/tiddlyweb/host
     let newFields = {
         title: '$:/config/tiddlyweb/host',
-        text: `$protocol$//$host$${this.pathPrefix}/`
+        text: `$protocol$//$host$${this.boot.pathPrefix}/`
     }, tiddler = this.wiki.getTiddler('$:/config/tiddlyweb/host');
     this.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
 
@@ -141,7 +138,7 @@ State.prototype.loadPlugin = function(name,paths) {
             return;
         }
     }
-    $tw.utils.log(`Warning for Wiki '${this.pathPrefix}': Cannot find plugin '${name}'`);
+    $tw.utils.log(`Warning for Wiki '${this.boot.pathPrefix}': Cannot find plugin '${name}'`);
 };
 
 /* 
@@ -264,11 +261,26 @@ State.prototype.loadWikiTiddlersNode = function(wikiPath,options) {
 };
 
 // Multi Wiki methods
+exports.loadSateRoot = function(pathPrefix) {
+    // Set the $tw state properties
+    $tw.boot.pathPrefix = pathPrefix || "";
+    $tw.boot.regexp = null;
+    $tw.boot.serveInfo = {
+        name: pathPrefix,
+        path: "./"
+    };
+    // Setup the config prefix path. For backwards compatibility we use $:/config/tiddlyweb/host
+    let newFields = {
+        title: '$:/config/tiddlyweb/host',
+        text: `$protocol$//$host$${$tw.boot.pathPrefix}/`
+    }, tiddler = $tw.wiki.getTiddler('$:/config/tiddlyweb/host');
+    $tw.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
+}
 
 /*
     This function loads a wiki into a named state object.
 */
-exports.loadStateWiki = function(serveInfo,pathPrefix,groupPrefix) {
+exports.loadStateWiki = function(serveInfo,serverPrefix,groupPrefix) {
     if(typeof serveInfo === "string") {
         serveInfo = {
             name: path.basename(serveInfo),
@@ -277,22 +289,28 @@ exports.loadStateWiki = function(serveInfo,pathPrefix,groupPrefix) {
     }
     let state = null,
         finalPath = path.resolve($tw.boot.wikiPath,serveInfo.path),
+        pathPrefix = (serverPrefix? `/${serverPrefix}/${groupPrefix}/`: `/${groupPrefix}/`)+encodeURIComponent(serveInfo.name),
         loaded = $tw.utils.hasStateWiki(serveInfo.name);
     if(!$tw.utils.isDirectory(finalPath)) {
-        $tw.utils.warning("loadWikiState error, serveInfo: "+JSON.stringify(serveInfo,null,2));
+        $tw.utils.warning("loadWikiState error, '" +pathPrefix+ "': "+JSON.stringify(serveInfo,null,2));
         serveInfo = null;
     }
     // Check for duplicates, we can't serve the same wiki at two different paths
-    $tw.states.forEach(function(state,name) {
-        if(finalPath == path.resolve($tw.boot.wikiPath,state.serveInfo.path)) {
-            $tw.utils.warning("loadWikiState duplicate, serveInfo: "+JSON.stringify(serveInfo,null,2));
-            loaded = true;
-        }
-    })
+    if(finalPath == path.resolve($tw.boot.wikiPath,".")) {
+        $tw.utils.warning("loadWikiState duplicate, '" +pathPrefix+ "': " + JSON.stringify(serveInfo,null,2) + " has already been loaded as the root server wiki.");  
+        loaded = true;
+    } else {
+        $tw.states.forEach(function(state,name) {
+            if(finalPath == path.resolve($tw.boot.wikiPath,state.boot.serveInfo.path)) {
+                $tw.utils.warning("loadWikiState duplicate, '" +pathPrefix+ "': "+JSON.stringify(serveInfo,null,2)+" has already been loaded as '" +state.boot.pathPrefix+ "'.");
+                loaded = true;
+            }
+        });
+    }
     // Make sure it isn't loaded already
     if(serveInfo && !loaded) {
         //setup the tiddlywiki state instance
-        state = new State(serveInfo,pathPrefix,groupPrefix);
+        state = new State(serveInfo,pathPrefix);
         // Set the wiki as loaded
         $tw.utils.setStateWiki(serveInfo.name,state);
         $tw.hooks.invokeHook('wiki-loaded',serveInfo.name);
@@ -301,17 +319,21 @@ exports.loadStateWiki = function(serveInfo,pathPrefix,groupPrefix) {
 };
 
 exports.hasStateWiki = function(pathPrefix) {
-    return $tw.states.has(pathPrefix)
+    return $tw.boot.pathPrefix == pathPrefix || $tw.states.has(pathPrefix)
 }
 
 exports.getStateWiki = function(pathPrefix) {
     let state = null;
-    if($tw.states.has(pathPrefix)) {
+    if($tw.boot.pathPrefix == pathPrefix) {
+        state = $tw;
+    } else if($tw.states.has(pathPrefix)) {
         state = $tw.states.get(pathPrefix);
     }
     return state;
 }
 
 exports.setStateWiki = function(pathPrefix,state) {
-    $tw.states.set(pathPrefix,state)
+    if($tw.boot.pathPrefix !== pathPrefix) {
+        $tw.states.set(pathPrefix,state)
+    }
 }

@@ -53,10 +53,10 @@ function WebsocketAdaptor(options) {
 		}
 	}
 	wikiTiddlers.observeDeep((events,transaction) => {
-		if (transaction.origin !== state.wiki) {
+		if(transaction.origin !== state.wiki) {
 		let targets = [];
 		events.forEach(event => {
-			if (event.target == event.currentTarget) {
+			if(event.target == event.currentTarget) {
 			// A tiddler was added
 			event.changes.added.forEach(added => {
 				$tw.utils.log(added.content.type.toJSON());
@@ -81,7 +81,7 @@ function WebsocketAdaptor(options) {
 		}
 	});
 	wikiTombstones.observe((event,transaction) => {
-		if (transaction.origin !== state.wiki) {
+		if(transaction.origin !== state.wiki) {
 		event.delta.forEach(delta => {
 			if(delta.insert) {
 			delta.insert.forEach(item => {
@@ -146,11 +146,11 @@ function WebsocketAdaptor(options) {
 				wikiTombstones.delete(tsIndex,1)
 				}
 			} else if(change.deleted) {
-				if (tiddlerIndex !== -1 ) {
+				if(tiddlerIndex !== -1 ) {
 				wikiTitles.delete(tiddlerIndex,1);
 				wikiTiddlers.delete(tiddlerIndex,1);
 				}
-				if (tsIndex == -1) {
+				if(tsIndex == -1) {
 				wikiTombstones.push([title]);
 				}
 			}
@@ -239,7 +239,7 @@ WebsocketAdaptor.prototype.saveTiddler = function(tiddler,callback,options) {
 		}
 		$tw.utils.saveTiddlerToFile(tiddler,fileInfo,function(err,fileInfo) {
 			if(err) {
-				if ((err.code == "EPERM" || err.code == "EACCES") && err.syscall == "open") {
+				if((err.code == "EPERM" || err.code == "EACCES") && err.syscall == "open") {
 					fileInfo = fileInfo || self.boot.files[tiddler.fields.title];
 					fileInfo.writeError = true;
 					self.boot.files[tiddler.fields.title] = fileInfo;
@@ -286,7 +286,7 @@ WebsocketAdaptor.prototype.deleteTiddler = function(title,callback,options) {
 	if(fileInfo) {
 		$tw.utils.deleteTiddlerFile(fileInfo,function(err,fileInfo) {
 			if(err) {
-				if ((err.code == "EPERM" || err.code == "EACCES") && err.syscall == "unlink") {
+				if((err.code == "EPERM" || err.code == "EACCES") && err.syscall == "unlink") {
 					// Error deleting the file on disk, should fail gracefully
 					$tw.syncer.displayError("Server desynchronized. Error deleting file for deleted tiddler \"" + title + "\"",err);
 					return callback(null,fileInfo);
