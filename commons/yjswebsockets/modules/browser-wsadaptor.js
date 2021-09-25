@@ -28,25 +28,29 @@ function WebsocketAdaptor(options) {
   this.isReadOnly = false;
   this.isAnonymous = true;
 
-  // Initialise Yjs in the browser
-  /**
-   * @type {{bindState: function(string,WikiDoc):void, writeState:function(string,WikiDoc):Promise<any>, provider: any}|null}
-   */
-   $tw.utils.log('Persisting Y documents to y-indexeddb')
-   $tw.idbs = new Map()
-   $tw.ypersistence = {
-     provider: require('./y-indexeddb.cjs').IndexeddbPersistence,
-     bindState: (docName,ydoc) => {
+    // Initialise Yjs in the browser
+    /**
+     * @type {{bindState: function(string,WikiDoc):void, writeState:function(string,WikiDoc):Promise<any>, provider: any}|null}
+     */
+    $tw.utils.log('Persisting Y documents to y-indexeddb')
+    $tw.idbs = new Map()
+    $tw.ypersistence = {
+      provider: require('./y-indexeddb.cjs').IndexeddbPersistence,
+      bindState: (docName,ydoc) => {
         let indexeddbProvider = new $tw.ypersistence.provider(docName,ydoc);
         indexeddbProvider.on('destroy',() => {
           $tw.syncadaptor.idbs.delete(docName);
         });
         $tw.idbs.set(docName,indexeddbProvider);
-     },
-     writeState: (docName, ydoc) => {}
-   }
-  this.gcEnabled = true;
-  this.doc = $tw.utils.getYDoc(this.pathPrefix);
+      },
+      writeState: (docName, ydoc) => {}
+    }
+    // Setup the wikiDoc
+    this.gcEnabled = true;
+    this.wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
+    this.wikiTitles = this.wikiDoc.getArray("wikiTitles");
+    this.wikiTiddlers = this.wikiDoc.getArray("wikiTiddlers");
+    this.wikiTombstones = this.wikiDoc.getArray("wikiTombstones");
 }
 
 // Syncadaptor properties
@@ -241,23 +245,20 @@ WebsocketAdaptor.prototype.saveTiddler = function(tiddler,callback,options) {
   let title = tiddler.fields.title;
   let adaptorInfo = options.tiddlerInfo? options.tiddlerInfo.adaptorInfo: this.getTiddlerInfo(title);
   // Save to the YDoc here
-  let wikiTitles = this.doc.getArray("wikiTitles");
-  let wikiTiddlers = this.doc.getArray("wikiTiddlers");
-  let wikiTombstones = this.doc.getArray("wikiTombstones");
-  let tiddlerIndex = wikiTitles.toArray().indexOf(title);
-  let tsIndex = wikiTombstones.toArray().indexOf(title);
+  let tiddlerIndex = this.wikiTitles.toArray().indexOf(title);
+  let tsIndex = this.wikiTombstones.toArray().indexOf(title);
 
   let changedFields = {},
   tiddlerFields = tiddler.getFieldStrings();
   
   $tw.utils.each(tiddlerFields,function(field,name) {
-    if(tiddlerIndex == -1 || !wikiTiddlers.get(tiddlerIndex).has(name) || 
-      $tw.utils.hashString(field) !== $tw.utils.hashString(wikiTiddlers.get(tiddlerIndex).get(name))) {
+    if(tiddlerIndex == -1 || !this.wikiTiddlers.get(tiddlerIndex).has(name) || 
+      $tw.utils.hashString(field) !== $tw.utils.hashString(this.wikiTiddlers.get(tiddlerIndex).get(name))) {
       changedFields[name] = field;
     }
   });
-  this.doc.transact(() => {
-    let tiddlerMap = tiddlerIndex == -1? new Y.Map(): wikiTiddlers.get(tiddlerIndex);
+  this.wikiDoc.transact(() => {
+    let tiddlerMap = tiddlerIndex == -1? new Y.Map(): this.wikiTiddlers.get(tiddlerIndex);
     $tw.utils.each(changedFields,(field,name) => {
       tiddlerMap.set(name,field);
     });
@@ -267,11 +268,11 @@ WebsocketAdaptor.prototype.saveTiddler = function(tiddler,callback,options) {
       }
     });
     if(tiddlerIndex == -1){
-      wikiTiddlers.push([tiddlerMap]);
-      wikiTitles.push([title]);
+      this.wikiTiddlers.push([tiddlerMap]);
+      this.wikiTitles.push([title]);
     }
     if(tsIndex !== -1) {
-      wikiTombstones.delete(tsIndex,1)
+      this.wikiTombstones.delete(tsIndex,1)
     }
   },this.wiki)
   // report the Revision
@@ -283,14 +284,11 @@ WebsocketAdaptor.prototype.saveTiddler = function(tiddler,callback,options) {
 // Used for lazy loading
 WebsocketAdaptor.prototype.loadTiddler = function(title,callback) {
   try {
-    let wikiTitles = this.doc.getArray("wikiTitles");
-    let wikiTiddlers = this.doc.getArray("wikiTiddlers"); 
-    let wikiTombstones = this.doc.getArray("wikiTombstones");
-    let tiddlerIndex = wikiTitles.toArray().indexOf(title);
-    let tsIndex = wikiTombstones.toArray().indexOf(title);
+    let tiddlerIndex = this.wikiTitles.toArray().indexOf(title);
+    let tsIndex = this.wikiTombstones.toArray().indexOf(title);
     if(tsIndex == -1 && tiddlerIndex !== -1) {
       // Invoke the callback
-      callback(null,wikiTiddlers.get(tiddlerIndex).toJSON());
+      callback(null,this.wikiTiddlers.get(tiddlerIndex).toJSON());
     } else {
       callback(null,null);
     }
@@ -303,18 +301,15 @@ WebsocketAdaptor.prototype.loadTiddler = function(title,callback) {
 // REQUIRED
 // This does whatever is necessary to delete a tiddler
 WebsocketAdaptor.prototype.deleteTiddler = function(title,callback,options) {
-  let wikiTitles = this.doc.getArray("wikiTitles");
-  let wikiTiddlers = this.doc.getArray("wikiTiddlers");
-  let wikiTombstones = this.doc.getArray("wikiTombstones");
-  let tiddlerIndex = wikiTitles.toArray().indexOf(title);
-  let tsIndex = wikiTombstones.toArray().indexOf(title);
-  this.doc.transact(() => {
+  let tiddlerIndex = this.wikiTitles.toArray().indexOf(title);
+  let tsIndex = this.wikiTombstones.toArray().indexOf(title);
+  this.wikiDoc.transact(() => {
     if(tiddlerIndex !== -1 ) {
-      wikiTitles.delete(tiddlerIndex,1);
-      wikiTiddlers.delete(tiddlerIndex,1);
+      this.wikiTitles.delete(tiddlerIndex,1);
+      this.wikiTiddlers.delete(tiddlerIndex,1);
     }
     if(tsIndex == -1) {
-      wikiTombstones.push([title]);
+      this.wikiTombstones.push([title]);
     }
   },this.wiki);
   callback(null,null);

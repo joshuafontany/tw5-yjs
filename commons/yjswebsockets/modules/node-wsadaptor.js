@@ -19,8 +19,8 @@ const fs = $tw.node ? require("fs") : null,
 	DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
 
 function WebsocketAdaptor(options) {
-	var self = this;
-	this.wiki = options.wiki;
+	var self = this; debugger;
+	this.wiki = options.wiki || null;
 	this.boot = options.boot || $tw.boot;
 	this.pathPrefix = this.getPathPrefix();
 	this.key = this.getKey();
@@ -29,30 +29,24 @@ function WebsocketAdaptor(options) {
 	// Attach a core filesystemadaptor to this syncadaptor
     this.fsadaptor = new FileSystemAdaptor(options);
 
-	// Initialise Yjs on node
+	// Setup the wikiDoc
 	this.gcEnabled = process.env.GC !== 'false' && process.env.GC !== '0';
-
-	// Setup the YDoc for the wiki
-	let wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
-	let wikiTitles = wikiDoc.getArray("wikiTitles");
-	let wikiTiddlers = wikiDoc.getArray("wikiTiddlers");
-	let wikiTombstones = wikiDoc.getArray("wikiTombstones");
-	//Attach the persistence provider here
-
-	// Attach a y-tiddlywiki provider here
-	// This leaves each wiki's syncadaptor free to sync to disk or other storage
+	this.wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
+	this.wikiTitles = this.wikiDoc.getArray("wikiTitles");
+	this.wikiTiddlers = this.wikiDoc.getArray("wikiTiddlers");
+	this.wikiTombstones = this.wikiDoc.getArray("wikiTombstones");
 
 	// Setup the observers
 	let stashTiddler = function(title) {
-		let targetIndex = wikiTitles.toArray().indexOf(title);
+		let targetIndex = this.wikiTitles.toArray().indexOf(title);
 		if(targetIndex !== -1) {
 		// Save the tiddler
-		let target = wikiTiddlers.get(targetIndex),
+		let target = this.wikiTiddlers.get(targetIndex),
 			fields = target.toJSON();
 		state.wiki.addTiddler(new $tw.Tiddler(state.wiki.getCreationFields(),fields,{title: title},state.wiki.getModificationFields()));
 		}
 	}
-	wikiTiddlers.observeDeep((events,transaction) => {
+	this.wikiTiddlers.observeDeep((events,transaction) => {
 		if(transaction.origin !== state.wiki) {
 		let targets = [];
 		events.forEach(event => {
@@ -80,7 +74,7 @@ function WebsocketAdaptor(options) {
 		})
 		}
 	});
-	wikiTombstones.observe((event,transaction) => {
+	this.wikiTombstones.observe((event,transaction) => {
 		if(transaction.origin !== state.wiki) {
 		event.delta.forEach(delta => {
 			if(delta.insert) {
@@ -107,13 +101,13 @@ function WebsocketAdaptor(options) {
 		let filteredTiddlers = {}
 		$tw.utils.each(changes,function(change,title) {
 			let changedFields = {},
-			tiddlerIndex = wikiTitles.toArray().indexOf(title),
+			tiddlerIndex = this.wikiTitles.toArray().indexOf(title),
 			tiddler = state.wiki.tiddlerExists(title) && state.wiki.getTiddler(title);
 			if(tiddler && change.modified) {
 			let tiddlerFields = tiddler.getFieldStrings();
 			$tw.utils.each(tiddlerFields,function(field,name) {
-				if(tiddlerIndex == -1 || !wikiTiddlers.get(tiddlerIndex).has(name) || 
-				$tw.utils.hashString(field) !== $tw.utils.hashString(wikiTiddlers.get(tiddlerIndex).get(name))) {
+				if(tiddlerIndex == -1 || !this.wikiTiddlers.get(tiddlerIndex).has(name) || 
+				$tw.utils.hashString(field) !== $tw.utils.hashString(this.wikiTiddlers.get(tiddlerIndex).get(name))) {
 				changedFields[name] = field;
 				}
 			});
@@ -122,14 +116,14 @@ function WebsocketAdaptor(options) {
 			}
 			filteredTiddlers[title] = changedFields;
 		});
-		wikiDoc.transact(() => {
+		this.wikiDoc.transact(() => {
 			$tw.utils.each(filteredTiddlers,function(changedFields,title) {
 			let change = changes[title];
 			let tiddler = state.wiki.tiddlerExists(title) && state.wiki.getTiddler(title);
-			let tiddlerIndex = wikiTitles.toArray().indexOf(title);
-			let tsIndex = wikiTombstones.toArray().indexOf(title);
+			let tiddlerIndex = this.wikiTitles.toArray().indexOf(title);
+			let tsIndex = this.wikiTombstones.toArray().indexOf(title);
 			if(tiddler && change.modified) {
-				let tiddlerMap = tiddlerIndex == -1? new Y.Map(): wikiTiddlers.get(tiddlerIndex);
+				let tiddlerMap = tiddlerIndex == -1? new Y.Map(): this.wikiTiddlers.get(tiddlerIndex);
 				$tw.utils.each(changedFields,(field,name) => {
 				tiddlerMap.set(name,field);
 				});
@@ -139,19 +133,19 @@ function WebsocketAdaptor(options) {
 				}
 				});
 				if(tiddlerIndex == -1){
-				wikiTiddlers.push([tiddlerMap]);
-				wikiTitles.push([title]);
+					this.wikiTiddlers.push([tiddlerMap]);
+					this.wikiTitles.push([title]);
 				}
 				if(tsIndex !== -1) {
-				wikiTombstones.delete(tsIndex,1)
+					this.wikiTombstones.delete(tsIndex,1)
 				}
 			} else if(change.deleted) {
 				if(tiddlerIndex !== -1 ) {
-				wikiTitles.delete(tiddlerIndex,1);
-				wikiTiddlers.delete(tiddlerIndex,1);
+					this.wikiTitles.delete(tiddlerIndex,1);
+					this.wikiTiddlers.delete(tiddlerIndex,1);
 				}
 				if(tsIndex == -1) {
-				wikiTombstones.push([title]);
+					this.wikiTombstones.push([title]);
 				}
 			}
 			})
@@ -174,16 +168,15 @@ WebsocketAdaptor.prototype.isReady = function() {
 
 WebsocketAdaptor.prototype.getPathPrefix = function() {
 	let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER);
-	text.replace(/\/$/, '');
-	text.replace(/\$protocol\$\/\/\$host\$/, '');
+	text = text.replace(/\/$/,'').replace(/\$protocol\$\/\/\$host\$/,'');
 	return text;
 }
 
 WebsocketAdaptor.prototype.getKey = function() {
 	let key = $tw.utils.uuid.NIL,
-	  tiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER);
+    	tiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER);
 	if(tiddler) {
-	  key = $tw.utils.uuid.validate(tiddler.fields.key) && tiddler.fields.key;
+		key = $tw.utils.uuid.validate(tiddler.fields.key) && tiddler.fields.key;
 	}
 	return key;
   }
@@ -303,6 +296,6 @@ WebsocketAdaptor.prototype.deleteTiddler = function(title,callback,options) {
 	}
 };
 
-if(fs) {
-	//exports.adaptorClass = WebsocketAdaptor;
+if($tw.node) {
+	exports.adaptorClass = WebsocketAdaptor;
 }

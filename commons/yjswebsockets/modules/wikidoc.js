@@ -116,7 +116,7 @@ class WikiDoc extends Y.Doc {
               }
               if(encoding.length(encoder) > 1) { 
                 session.send(encoder,eventDoc.name);
-              }debugger;
+              }
               break
             }
             case messageAwareness: {
