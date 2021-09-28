@@ -12,45 +12,73 @@ A sync adaptor for syncing changes from/to a browser using Yjs websockets
 "use strict";
 
 const WebsocketSession = require('./wssession.js').WebsocketSession,
-  Y = require('./yjs.cjs'),
-  CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host",
-  DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
+	Y = require('./yjs.cjs'),
+	CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host",
+	DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
 
 function WebsocketAdaptor(options) {
-  this.wiki = options.wiki;
-  this.host = this.getHost();
-  this.pathPrefix = this.getPathPrefix();
-  this.key = this.getKey();
-  this.hasStatus = false;
-  this.session = null;
-  this.logger = new $tw.utils.Logger("browser-wsadaptor");
-  this.isLoggedIn = false;
-  this.isReadOnly = false;
-  this.isAnonymous = true;
+	this.wiki = options.wiki;
+	this.host = this.getHost();
+	this.pathPrefix = this.getPathPrefix();
+	this.key = this.getKey();
+	this.hasStatus = false;
+	this.session = null;
+	this.logger = new $tw.utils.Logger("browser-wsadaptor");
+	this.isLoggedIn = false;
+	this.isReadOnly = false;
+	this.isAnonymous = true;
 
-    // Initialise Yjs in the browser
-    /**
-     * @type {{bindState: function(string,WikiDoc):void, writeState:function(string,WikiDoc):Promise<any>, provider: any}|null}
-     */
-    $tw.utils.log('Persisting Y documents to y-indexeddb')
-    $tw.idbs = new Map()
-    $tw.ypersistence = {
-      provider: require('./y-indexeddb.cjs').IndexeddbPersistence,
-      bindState: (docName,ydoc) => {
-        let indexeddbProvider = new $tw.ypersistence.provider(docName,ydoc);
-        indexeddbProvider.on('destroy',() => {
-          $tw.syncadaptor.idbs.delete(docName);
-        });
-        $tw.idbs.set(docName,indexeddbProvider);
-      },
-      writeState: (docName, ydoc) => {}
-    }
-    // Setup the wikiDoc
-    this.gcEnabled = true;
-    this.wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
-    this.wikiTitles = this.wikiDoc.getArray("wikiTitles");
-    this.wikiTiddlers = this.wikiDoc.getArray("wikiTiddlers");
-    this.wikiTombstones = this.wikiDoc.getArray("wikiTombstones");
+	// Initialise Yjs in the browser
+	/**
+	 * @type {{bindState: function(string,WikiDoc):void, writeState:function(string,WikiDoc):Promise<any>, provider: any}|null}
+	 */
+	$tw.utils.log('Persisting Y documents to y-indexeddb')
+	$tw.idbs = new Map()
+	$tw.ypersistence = {
+		provider: require('./y-indexeddb.cjs').IndexeddbPersistence,
+		bindState: (docName,ydoc) => {
+			let indexeddbProvider = new $tw.ypersistence.provider(docName,ydoc);
+			indexeddbProvider.on('destroy',() => {
+				$tw.syncadaptor.idbs.delete(docName);
+			});
+			$tw.idbs.set(docName,indexeddbProvider);
+		},
+		writeState: (docName, ydoc) => {}
+	}
+	// Setup the Y wikiDoc
+	// disable gc when using snapshots!
+	$tw.ygcEnabled = this.wiki.getTiddlerText("$:/config/yjs/gcEnabled","yes") == "yes";
+	$tw.wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
+	$tw.wikiTitles = $tw.wikiDoc.getArray("wikiTitles");
+	$tw.wikiTiddlers = $tw.wikiDoc.getArray("wikiTiddlers");
+	$tw.wikiTombstones = $tw.wikiDoc.getArray("wikiTombstones");
+
+	// Setup the observers
+	$tw.wikiTiddlers.observeDeep((events,transaction) => {
+		if($tw.syncer && transaction.origin !== this.wiki) {debugger;
+			events.forEach(event => {
+				if(event.target == event.currentTarget) {
+					event.changes.deleted && event.changes.deleted.forEach(item => {
+						$tw.utils.log(`['${transaction.origin}'] Deleting tiddler: ${item.content.type.get('title')}`);
+						// A tiddler was deleted
+						this.wiki.deleteTiddler(item.content.type.get('title'));
+					});
+          event.changes.added && event.changes.added.forEach(item => {
+            // A tiddler was updated
+            let title = item.content.type.get('title');
+            $tw.utils.log(`['${transaction.origin}'] Updating tiddler: ${title}`);
+            $tw.syncer.titlesToBeLoaded[title] = true;
+					});
+				} else {
+					// A tiddler was updated
+					let title = event.target.get('title');
+					$tw.utils.log(`['${transaction.origin}'] Updating tiddler: ${title}`);
+					$tw.syncer.titlesToBeLoaded[title] = true;
+				}
+			});
+			$tw.syncer.processTaskQueue();
+		}
+	});
 }
 
 // Syncadaptor properties
@@ -66,44 +94,44 @@ WebsocketAdaptor.prototype.setLoggerSaveBuffer = function(loggerForSaving) {
 };
 
 WebsocketAdaptor.prototype.isReady = function() {
-  return this.hasStatus && this.session && this.session.isReady();
+	return this.hasStatus && this.session && this.session.isReady();
 }
 
 WebsocketAdaptor.prototype.getHost = function() {
-  let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER),
-    substitutions = [
-      {name: "protocol", value: document.location.protocol},
-      {name: "host", value: document.location.host}
-    ];
-  for(let t=0; t<substitutions.length; t++) {
-    let s = substitutions[t];
-    text = $tw.utils.replaceString(text,new RegExp("\\$" + s.name + "\\$","mg"),s.value);
-  }
-  return text;
+	let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER),
+		substitutions = [
+			{name: "protocol", value: document.location.protocol},
+			{name: "host", value: document.location.host}
+		];
+	for(let t=0; t<substitutions.length; t++) {
+		let s = substitutions[t];
+		text = $tw.utils.replaceString(text,new RegExp("\\$" + s.name + "\\$","mg"),s.value);
+	}
+	return text;
 }
 
 WebsocketAdaptor.prototype.getPathPrefix = function() {
-  let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER);
-  text = text.replace(/\/$/,'').replace(/\$protocol\$\/\/\$host\$/,'');
-  return text;
+	let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER);
+	text = text.replace(/\/$/,'').replace(/\$protocol\$\/\/\$host\$/,'');
+	return text;
 }
 
 WebsocketAdaptor.prototype.getKey = function() {
-  let key = $tw.utils.uuid.NIL,
-    tiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER);
-  if(tiddler) {
-    key = $tw.utils.uuid.validate(tiddler.fields.key) && tiddler.fields.key;
-  }
-  return key;
+	let key = $tw.utils.uuid.NIL,
+		tiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER);
+	if(tiddler) {
+		key = $tw.utils.uuid.validate(tiddler.fields.key) && tiddler.fields.key;
+	}
+	return key;
 }
 
 WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {
-  /* 
-    Return the vector clock of the tiddler?
-  */
-  return {
+	/* 
+		Return the vector clock of the tiddler?
+	*/
+	return {
 
-  };
+	};
 }
 
 /*
@@ -112,8 +140,8 @@ Get the current status of the user
 WebsocketAdaptor.prototype.getStatus = function(callback) {
 	// Get status
 	let self = this,
-    params = "?wiki=" + this.key + "&session=" + (window.sessionStorage.getItem("ws-session") || $tw.utils.uuid.NIL);
-  this.logger.log("Getting status");
+		params = "?wiki=" + this.key + "&session=" + (window.sessionStorage.getItem("ws-session") || $tw.utils.uuid.NIL);
+	this.logger.log("Getting status");
 	$tw.utils.httpRequest({
 		url: this.host + "status" + params,
 		callback: function(err,data) {
@@ -133,46 +161,46 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 				self.isReadOnly = !!json["read_only"];
 				self.isAnonymous = !!json.anonymous;
 
-        if(self.session && json["session_id"] && self.session.id == json["session_id"]) {
-          self.session.connect()
-        } else if(json["session_id"]) {
-          // Destroy the old session
-          self.session && self.session.destroy();
-          // Setup the session
-          let options = {
-            id: json["session_id"],
-            key: self.key,
-            pathPrefix: self.pathPrefix,
-            username: json.username,
-            isAnonymous: self.isAnonymous,
-            isLoggedIn: self.isLoggedIn,
-            isReadOnly: self.isReadOnly,
-            expires: json["session_expires"],
-            client: true,
-            connect: true,
-            ip: json.ip,
-            url: new URL(self.host)
-          }
-          options.url.searchParams.append("wiki", self.key);
-          options.url.searchParams.append("session", json["session_id"]);
-          self.session = new WebsocketSession(options);
-          // Set the session id
-          window.sessionStorage.setItem("ws-session", self.session.id)
-          // Error handler
-          self.session.once('error',function(event,session) {
-            // Invalid session or connection rejected
-            $tw.rootWidget.dispatchEvent({
-              type: "tm-logout"
-            });
-          });
+				if(self.session && json["session_id"] && self.session.id == json["session_id"]) {
+					self.session.connect()
+				} else if(json["session_id"]) {
+					// Destroy the old session
+					self.session && self.session.destroy();
+					// Setup the session
+					let options = {
+						id: json["session_id"],
+						key: self.key,
+						pathPrefix: self.pathPrefix,
+						username: json.username,
+						isAnonymous: self.isAnonymous,
+						isLoggedIn: self.isLoggedIn,
+						isReadOnly: self.isReadOnly,
+						expires: json["session_expires"],
+						client: true,
+						connect: true,
+						ip: json.ip,
+						url: new URL(self.host)
+					}
+					options.url.searchParams.append("wiki", self.key);
+					options.url.searchParams.append("session", json["session_id"]);
+					self.session = new WebsocketSession(options);
+					// Set the session id
+					window.sessionStorage.setItem("ws-session", self.session.id)
+					// Error handler
+					self.session.once('error',function(event,session) {
+						// Invalid session or connection rejected
+						$tw.rootWidget.dispatchEvent({
+							type: "tm-logout"
+						});
+					});
 
-        }
-      }
-      // Invoke the callback if present
-      if(callback) {
-        callback(null,self.isLoggedIn,self.session.username,self.isReadOnly,self.isAnonymous);
-      }
-    }
+				}
+			}
+			// Invoke the callback if present
+			if(callback) {
+				callback(null,self.isLoggedIn,self.session.username,self.isReadOnly,self.isAnonymous);
+			}
+		}
 	});
 };
 
@@ -215,16 +243,16 @@ WebsocketAdaptor.prototype.login = function(username,password,callback) {
 /*
 */
 WebsocketAdaptor.prototype.logout = function(callback) {
-  let self = this,
-    params = "?wiki=" + this.key + "&session=" + (window.sessionStorage.getItem("ws-session") || $tw.utils.uuid.NIL);
-  this.session.destroy()
-  this.session = null;
+	let self = this,
+		params = "?wiki=" + this.key + "&session=" + (window.sessionStorage.getItem("ws-session") || $tw.utils.uuid.NIL);
+	this.session.destroy()
+	this.session = null;
 	let options = {
 		url: this.host + "logout" + params,
 		type: "POST",
 		data: {},
 		callback: function(err,data) {
-      window.sessionStorage.setItem("ws-session", $tw.utils.uuid.NIL);
+			window.sessionStorage.setItem("ws-session", $tw.utils.uuid.NIL);
 			callback(err);
 		}
 	};
@@ -233,90 +261,83 @@ WebsocketAdaptor.prototype.logout = function(callback) {
 };
 
 /*
-Get an array of skinny tiddler fields from the yjs doc?
+Save a tiddler and invoke the callback with (err,adaptorInfo,revision)
 */
-WebsocketAdaptor.prototype.getUpdatedTiddlers = function(syncer,callback) {
-    callback(null,null);
-};
-
-// REQUIRED
-// This does whatever is necessary to actually store a tiddler
 WebsocketAdaptor.prototype.saveTiddler = function(tiddler,callback,options) {
-  let title = tiddler.fields.title;
-  let adaptorInfo = options.tiddlerInfo? options.tiddlerInfo.adaptorInfo: this.getTiddlerInfo(title);
-  // Save to the YDoc here
-  let tiddlerIndex = this.wikiTitles.toArray().indexOf(title);
-  let tsIndex = this.wikiTombstones.toArray().indexOf(title);
-
-  let changedFields = {},
-  tiddlerFields = tiddler.getFieldStrings();
-  
-  $tw.utils.each(tiddlerFields,function(field,name) {
-    if(tiddlerIndex == -1 || !this.wikiTiddlers.get(tiddlerIndex).has(name) || 
-      $tw.utils.hashString(field) !== $tw.utils.hashString(this.wikiTiddlers.get(tiddlerIndex).get(name))) {
-      changedFields[name] = field;
-    }
-  });
-  this.wikiDoc.transact(() => {
-    let tiddlerMap = tiddlerIndex == -1? new Y.Map(): this.wikiTiddlers.get(tiddlerIndex);
-    $tw.utils.each(changedFields,(field,name) => {
-      tiddlerMap.set(name,field);
-    });
-    $tw.utils.each(tiddlerMap.toJSON(),(field,name) => {
-      if(Object.keys(tiddler.fields).indexOf(name) == -1) {
-        tiddlerMap.delete(name);
-      }
-    });
-    if(tiddlerIndex == -1){
-      this.wikiTiddlers.push([tiddlerMap]);
-      this.wikiTitles.push([title]);
-    }
-    if(tsIndex !== -1) {
-      this.wikiTombstones.delete(tsIndex,1)
-    }
-  },this.wiki)
-  // report the Revision
-  callback(null,adaptorInfo,null);
+	let title = tiddler.fields.title;
+	let adaptorInfo = options.tiddlerInfo? options.tiddlerInfo.adaptorInfo: this.getTiddlerInfo(title);
+	// Save to the YDoc here
+	let tiddlerIndex = $tw.wikiTitles.toArray().indexOf(title);
+	let tsIndex = $tw.wikiTombstones.toArray().indexOf(title);
+	let changedFields = {},
+		tiddlerFields = tiddler.getFieldStrings();
+	$tw.utils.each(tiddlerFields,function(field,name) {
+		if(tiddlerIndex == -1 || !$tw.wikiTiddlers.get(tiddlerIndex).has(name) || 
+			$tw.utils.hashString(field) !== $tw.utils.hashString($tw.wikiTiddlers.get(tiddlerIndex).get(name))) {
+			changedFields[name] = field;
+		}
+	});
+	$tw.wikiDoc.transact(() => {
+		if(tiddlerIndex == -1){
+			$tw.wikiTiddlers.push([new Y.Map()]);
+			$tw.wikiTitles.push([title]);
+			tiddlerIndex = $tw.wikiTitles.toArray().indexOf(title);
+		}
+		if(tsIndex !== -1) {
+			$tw.wikiTombstones.delete(tsIndex,1)
+		}
+		let tiddlerMap = $tw.wikiTiddlers.get(tiddlerIndex);
+		$tw.utils.each(tiddlerMap.toJSON(),(field,name) => {
+			if(Object.keys(tiddler.fields).indexOf(name) == -1) {
+				tiddlerMap.delete(name);
+			}
+		});
+		$tw.utils.each(changedFields,(field,name) => {
+			tiddlerMap.set(name,field);
+		});		
+	},$tw.wiki)
+	// report the Revision
+	callback(null,adaptorInfo,null);
 }
 
-// REQUIRED
-// This does whatever is necessary to load a tiddler.
-// Used for lazy loading
+/*
+Load a tiddler and invoke the callback with (err,tiddlerFields)
+*/
 WebsocketAdaptor.prototype.loadTiddler = function(title,callback) {
-  try {
-    let tiddlerIndex = this.wikiTitles.toArray().indexOf(title);
-    let tsIndex = this.wikiTombstones.toArray().indexOf(title);
-    if(tsIndex == -1 && tiddlerIndex !== -1) {
-      // Invoke the callback
-      callback(null,this.wikiTiddlers.get(tiddlerIndex).toJSON());
-    } else {
-      callback(null,null);
-    }
-  } catch (error) {
-    $tw.utils.warning(error);
-    callback($tw.language.getString("Error/XMLHttpRequest") + ": 0");
-  }
+	try {
+		let tiddlerIndex = $tw.wikiTitles.toArray().indexOf(title);
+		let tsIndex = $tw.wikiTombstones.toArray().indexOf(title);
+		if(tsIndex == -1 && tiddlerIndex !== -1) {
+			// Invoke the callback
+			callback(null,$tw.wikiTiddlers.get(tiddlerIndex).toJSON());
+		} else {
+			callback(null,null);
+		}
+	} catch (error) {
+		$tw.utils.warning(error);
+		callback($tw.language.getString("Error/XMLHttpRequest") + ": 0");
+	}
 }
 
-// REQUIRED
-// This does whatever is necessary to delete a tiddler
+/*
+Delete a tiddler and invoke the callback with (err)
+*/
 WebsocketAdaptor.prototype.deleteTiddler = function(title,callback,options) {
-  let tiddlerIndex = this.wikiTitles.toArray().indexOf(title);
-  let tsIndex = this.wikiTombstones.toArray().indexOf(title);
-  this.wikiDoc.transact(() => {
-    if(tiddlerIndex !== -1 ) {
-      this.wikiTitles.delete(tiddlerIndex,1);
-      this.wikiTiddlers.delete(tiddlerIndex,1);
-    }
-    if(tsIndex == -1) {
-      this.wikiTombstones.push([title]);
-    }
-  },this.wiki);
-  callback(null,null);
+	let tiddlerIndex = $tw.wikiTitles.toArray().indexOf(title);
+	let tsIndex = $tw.wikiTombstones.toArray().indexOf(title);
+	$tw.wikiDoc.transact(() => {
+		if(tiddlerIndex !== -1 ) {
+			$tw.wikiTitles.delete(tiddlerIndex,1);
+			$tw.wikiTiddlers.delete(tiddlerIndex,1);
+		}
+		if(tsIndex == -1) {
+			$tw.wikiTombstones.push([title]);
+		}
+	},$tw.wiki);
+	callback(null,null);
 }
 
 // Only set up the websockets if we are in the browser and have websockets.
 if($tw.browser && window.location.hostname) {
-  //setupSkinnyTiddlerLoading()
-  exports.adaptorClass = WebsocketAdaptor
+	exports.adaptorClass = WebsocketAdaptor
 }
