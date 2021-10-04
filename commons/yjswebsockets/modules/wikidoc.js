@@ -116,10 +116,10 @@ class WikiDoc extends Y.Doc {
 									syncProtocol.readSyncStep1(decoder, encoder, eventDoc)
 									break
 								case syncProtocol.messageYjsSyncStep2:
-									if(!session.isReadOnly) syncProtocol.readSyncStep2(decoder, eventDoc, session.id)
+									if(!session.isReadOnly) syncProtocol.readSyncStep2(decoder, eventDoc, session)
 									break
 								case syncProtocol.messageYjsUpdate:
-									if(!session.isReadOnly) syncProtocol.readUpdate(decoder, eventDoc, session.id)
+									if(!session.isReadOnly) syncProtocol.readUpdate(decoder, eventDoc, session)
 									break
 								default:
 									throw new Error('Unknown message type')

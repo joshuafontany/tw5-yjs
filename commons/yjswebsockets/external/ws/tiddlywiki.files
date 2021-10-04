@@ -21,85 +21,21 @@
         "type": "text/plain",
         "title": "$:/plugins/commons/yjs/external/ws/LICENSE"
       }
-    },
+    }
+  ],
+  "directories": [
     {
-      "file": "lib/buffer-util.js",
+      "path": "./lib",
+      "filesRegExp": "^.+\\.js",
+      "isTiddlerFile": false,
+      "isEditableFile": false,
       "fields": {
-        "type": "application/javascript",
-        "title": "$:/plugins/commons/yjs/external/ws/lib/buffer-util.js",
-        "module-type": "library"
-      }
-    },
-    {
-      "file": "lib/constants.js",
-      "fields": {
-        "type": "application/javascript",
-        "title": "$:/plugins/commons/yjs/external/ws/lib/constants.js",
-        "module-type": "library"
-      }
-    },
-    {
-      "file": "lib/event-target.js",
-      "fields": {
-        "type": "application/javascript",
-        "title": "$:/plugins/commons/yjs/external/ws/lib/event-target.js",
-        "module-type": "library"
-      }
-    },
-    {
-      "file": "lib/extension.js",
-      "fields": {
-        "type": "application/javascript",
-        "title": "$:/plugins/commons/yjs/external/ws/lib/extension.js",
-        "module-type": "library"
-      }
-    },
-    {
-      "file": "lib/permessage-deflate.js",
-      "fields": {
-        "type": "application/javascript",
-        "title": "$:/plugins/commons/yjs/external/ws/lib/permessage-deflate.js",
-        "module-type": "library"
-      }
-    },
-    {
-      "file": "lib/receiver.js",
-      "fields": {
-        "type": "application/javascript",
-        "title": "$:/plugins/commons/yjs/external/ws/lib/receiver.js",
-        "module-type": "library"
-      }
-    },
-    {
-      "file": "lib/sender.js",
-      "fields": {
-        "type": "application/javascript",
-        "title": "$:/plugins/commons/yjs/external/ws/lib/sender.js",
-        "module-type": "library"
-      }
-    },
-    {
-      "file": "lib/validation.js",
-      "fields": {
-        "type": "application/javascript",
-        "title": "$:/plugins/commons/yjs/external/ws/lib/validation.js",
-        "module-type": "library"
-      }
-    },
-    {
-      "file": "lib/websocket-server.js",
-      "fields": {
-        "type": "application/javascript",
-        "title": "$:/plugins/commons/yjs/external/ws/lib/websocket-server.js",
-        "module-type": "library"
-      }
-    },
-    {
-      "file": "lib/websocket.js",
-      "fields": {
-        "type": "application/javascript",
-        "title": "$:/plugins/commons/yjs/external/ws/lib/websocket.js",
-        "module-type": "library"
+        "title": {
+          "source": "filename",
+          "prefix": "$:/plugins/commons/yjs/external/ws/lib/"
+        },
+        "module-type": "library",
+        "type": "application/javascript"
       }
     }
   ]

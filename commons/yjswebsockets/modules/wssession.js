@@ -49,7 +49,7 @@ const messageHandlers = [];
 
 messageHandlers[messageSync] = (encoder, decoder, session, doc, emitSynced, messageType) => {
 	encoding.writeVarUint(encoder, messageSync);
-	const syncMessageType = syncProtocol.readSyncMessage(decoder, encoder, doc, session.id);
+	const syncMessageType = syncProtocol.readSyncMessage(decoder, encoder, doc, session);
 	if(emitSynced && syncMessageType === syncProtocol.messageYjsSyncStep2 && !session.synced) {
 		session.synced = true;
 	}
