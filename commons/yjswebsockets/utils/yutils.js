@@ -17,7 +17,7 @@ const WikiDoc = require('../wikidoc.js').WikiDoc;
 const Y = require('../yjs.cjs');
 
 // Y Docs
-$tw.ydocs = new Map();
+$tw.ydocs = $tw.ydocs || new Map();
 
 /**
  * Gets a Y.Doc by name, whether in memory or on disk
@@ -71,7 +71,7 @@ exports.initWikiDoc = function (state) {
 			events.forEach(event => {
 				if (event.target == event.currentTarget) {
 					event.changes.deleted && event.changes.deleted.forEach(item => {
-						$tw.utils.log(`['${transaction.origin}'] Deleting tiddler: ${item.content.type.get('title')}`);
+						$tw.utils.log(`['${transaction.origin.id}'] Deleting tiddler: ${item.content.type.get('title')}`);
 						// A tiddler was deleted
 						state.wiki.deleteTiddler(item.content.type.get('title'));
 					});
@@ -79,7 +79,7 @@ exports.initWikiDoc = function (state) {
 						// A tiddler was updated
 						let title = item.content.type.get("title");
 						let fields = item.content.type.toJSON();
-						$tw.utils.log(`['${transaction.origin}'] Updating tiddler: ${title}`);
+						$tw.utils.log(`['${transaction.origin.id}'] Updating tiddler: ${title}`);
 						$tw.utils.log(JSON.stringify(fields, null, 2));
 						// Save the tiddler, preferring any incoming fields over any missing created or modified fields
 						state.wiki.addTiddler(new $tw.Tiddler(state.wiki.getCreationFields(), state.wiki.getModificationFields(), fields, {
@@ -90,7 +90,7 @@ exports.initWikiDoc = function (state) {
 					// A tiddler was updated
 					let title = event.target.get("title");
 					let fields = event.target.toJSON();
-					$tw.utils.log(`['${transaction.origin}'] Updating tiddler: ${title}`);
+					$tw.utils.log(`['${transaction.origin.id}'] Updating tiddler: ${title}`);
 					$tw.utils.log(JSON.stringify(fields, null, 2));
 					// Save the tiddler, preferring any incoming fields over any missing created or modified fields
 					state.wiki.addTiddler(new $tw.Tiddler(state.wiki.getCreationFields(), state.wiki.getModificationFields(), fields, {

@@ -49,35 +49,11 @@ function WebsocketAdaptor(options) {
 	// disable gc when using snapshots!
 	$tw.ygcEnabled = this.wiki.getTiddlerText("$:/config/yjs/gcEnabled","yes") == "yes";
 	$tw.wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
-	$tw.wikiTitles = $tw.wikiDoc.getArray("wikiTitles");
-	$tw.wikiTiddlers = $tw.wikiDoc.getArray("wikiTiddlers");
-	$tw.wikiTombstones = $tw.wikiDoc.getArray("wikiTombstones");
+
 
 	// Setup the observers
 	$tw.wikiTiddlers.observeDeep((events,transaction) => {
-		if($tw.syncer && transaction.origin !== this.wiki) {debugger;
-			events.forEach(event => {
-				if(event.target == event.currentTarget) {
-					event.changes.deleted && event.changes.deleted.forEach(item => {
-						$tw.utils.log(`['${transaction.origin}'] Deleting tiddler: ${item.content.type.get('title')}`);
-						// A tiddler was deleted
-						this.wiki.deleteTiddler(item.content.type.get('title'));
-					});
-          event.changes.added && event.changes.added.forEach(item => {
-            // A tiddler was updated
-            let title = item.content.type.get('title');
-            $tw.utils.log(`['${transaction.origin}'] Updating tiddler: ${title}`);
-            $tw.syncer.titlesToBeLoaded[title] = true;
-					});
-				} else {
-					// A tiddler was updated
-					let title = event.target.get('title');
-					$tw.utils.log(`['${transaction.origin}'] Updating tiddler: ${title}`);
-					$tw.syncer.titlesToBeLoaded[title] = true;
-				}
-			});
-			$tw.syncer.processTaskQueue();
-		}
+
 	});
 }
 
