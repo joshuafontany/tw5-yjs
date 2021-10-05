@@ -119,9 +119,9 @@ State.prototype = Object.create(Object.prototype);
 State.prototype.constructor = State;
 
 /*
-		plugins: Array of names of plugins (eg, "tiddlywiki/filesystemadaptor")
-		libraryPath: Path of library folder for these plugins (relative to core path)
-		envVar: Environment variable name for these plugins
+	plugins: Array of names of plugins (eg, "tiddlywiki/filesystemadaptor")
+	libraryPath: Path of library folder for these plugins (relative to core path)
+	envVar: Environment variable name for these plugins
 */
 State.prototype.loadPlugins = function (plugins, libraryPath, envVar) {
 	if(plugins) {
@@ -133,8 +133,8 @@ State.prototype.loadPlugins = function (plugins, libraryPath, envVar) {
 };
 
 /*
-		name: Name of the plugin to load
-		paths: array of file paths to search for it
+	name: Name of the plugin to load
+	paths: array of file paths to search for it
 */
 State.prototype.loadPlugin = function (name, paths) {
 	var pluginPath = $tw.findLibraryItem(name, paths);
@@ -149,10 +149,10 @@ State.prototype.loadPlugin = function (name, paths) {
 };
 
 /* 
-		path: path of wiki directory
-		options:
-				parentPaths: array of parent paths that we mustn't recurse into
-				readOnly: true if the tiddler file paths should not be retained
+	path: path of wiki directory
+	options:
+			parentPaths: array of parent paths that we mustn't recurse into
+			readOnly: true if the tiddler file paths should not be retained
 */
 State.prototype.loadWikiTiddlersNode = function (wikiPath, options) {
 	options = options || {};
@@ -293,7 +293,7 @@ exports.loadSateRoot = function (pathPrefix) {
 }
 
 /*
-		This function loads a wiki into a named state object.
+	This function loads a wiki into a named state object.
 */
 exports.loadStateWiki = function (serveInfo, serverPrefix, groupPrefix) {
 	if(typeof serveInfo === "string") {
@@ -324,7 +324,7 @@ exports.loadStateWiki = function (serveInfo, serverPrefix, groupPrefix) {
 	}
 	// Make sure it isn't loaded already
 	if(serveInfo && !loaded) {
-		//setup the tiddlywiki state instance
+		// Init the tiddlywiki state instance
 		state = new State(serveInfo, pathPrefix);
 		// Set the wiki as loaded
 		$tw.utils.setStateWiki(serveInfo.name, state);

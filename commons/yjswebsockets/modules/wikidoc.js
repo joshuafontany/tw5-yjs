@@ -48,7 +48,7 @@ class WikiDoc extends Y.Doc {
 	 */
 	constructor(name) {
 		super({
-			gc: $tw.ygcEnabled
+			gc: true
 		})
 		this.name = name
 		if($tw.node) {

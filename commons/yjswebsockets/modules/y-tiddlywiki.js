@@ -13,193 +13,219 @@ module-type: library
  * @module bindings/tiddlywiki
  */
 
- const { createMutex } = require('./lib0/dist/mutex.js');
+ const { createMutex } = require('./lib0/dist/mutex.cjs');
  const Y = require('./yjs.cjs');
  const { Awareness } = require('./awareness.cjs');
  
  /**
-  * Removes the pending '\n's if it has no attributes.
+  * @param {any} twCursors
   */
- export const normQuillDelta = delta => {
-   if (delta.length > 0) {
-	 const d = delta[delta.length - 1]
-	 const insert = d.insert
-	 if (d.attributes === undefined && insert !== undefined && insert.slice(-1) === '\n') {
-	   delta = delta.slice()
-	   let ins = insert.slice(0, -1)
-	   while (ins.slice(-1) === '\n') {
-		 ins = ins.slice(0, -1)
-	   }
-	   delta[delta.length - 1] = { insert: ins }
-	   if (ins.length === 0) {
-		 delta.pop()
-	   }
-	   return delta
-	 }
-   }
-   return delta
- }
- 
- /**
-  * @param {any} quillCursors
-  */
- const updateCursor = (quillCursors, aw, clientId, doc, type) => {
+ const updateCursor = (twCursors, aw, clientId, doc, type) => {
    try {
 	 if (aw && aw.cursor && clientId !== doc.clientID) {
 	   const user = aw.user || {}
 	   const color = user.color || '#ffa500'
 	   const name = user.name || `User: ${clientId}`
-	   quillCursors.createCursor(clientId.toString(), name, color)
+	   twCursors.createCursor(clientId.toString(), name, color)
 	   const anchor = Y.createAbsolutePositionFromRelativePosition(Y.createRelativePositionFromJSON(aw.cursor.anchor), doc)
 	   const head = Y.createAbsolutePositionFromRelativePosition(Y.createRelativePositionFromJSON(aw.cursor.head), doc)
 	   if (anchor && head && anchor.type === type) {
-		 quillCursors.moveCursor(clientId.toString(), { index: anchor.index, length: head.index - anchor.index })
+		 twCursors.moveCursor(clientId.toString(), { index: anchor.index, length: head.index - anchor.index })
 	   }
 	 } else {
-	   quillCursors.removeCursor(clientId.toString())
+	   twCursors.removeCursor(clientId.toString())
 	 }
    } catch (err) {
 	 console.error(err)
    }
  }
  
- export class TiddlywikiBinding {
-   /**
-	* @param {Y.Doc} wikiDoc
-	* @param {$tw.Wiki} wiki
-	* @param {Awareness} [awareness]
-	*/
-   constructor (wikiDoc, wiki, awareness) {
-	 const mux = createMutex()
-	 this.mux = mux
-	 this.wikiDoc = wikiDoc
-	 this.wiki = wiki
-	 const wikiTiddlers = this.wikiDoc.getArray("wikiTiddlers");
-	 this.wikiTiddlers = wikiTiddlers;
-	 this.wikiTitles = this.wikiDoc.getArray("wikiTitles");
-	 this.wikiTombstones = this.wikiDoc.getArray("wikiTombstones");
+ class TiddlywikiBinding {
+	/**
+		* @param {Y.Doc} wikiDoc
+		* @param {state} state
+		* @param {Awareness} [awareness]
+		*/
+	constructor (wikiDoc, state, awareness) {
+		const mux = createMutex()
+		this.mux = mux
+		this.wikiDoc = wikiDoc
+		const wikiTiddlers = this.wikiDoc.getArray("wikiTiddlers");
+		this.wikiTiddlers = wikiTiddlers;
+		this.wikiTitles = this.wikiDoc.getArray("wikiTitles");
+		this.wikiTombstones = this.wikiDoc.getArray("wikiTombstones");
 
-	 const twCursors = null //quill.getModule('cursors') || null
-	 this.twCursors = twCursors
-	 // This object contains all attributes used in the quill instance
-	 this._negatedUsedFormats = {}
-	 this.awareness = awareness
-	 this._awarenessChange = ({ added, removed, updated }) => {
-	   const states = /** @type {Awareness} */ (awareness).getStates()
-	   added.forEach(id => {
-		 updateCursor(twCursors, states.get(id), id, wikiDoc, wikiTiddlers)
-	   })
-	   updated.forEach(id => {
-		 updateCursor(twCursors, states.get(id), id, wikiDoc, wikiTiddlers)
-	   })
-	   removed.forEach(id => {
-		 twCursors.removeCursor(id.toString())
-	   })
-	 }
-	 this._tiddlersObserver = (events,transaction) => {
-		mux(() => {
-			if(transaction.origin !== this) {
-				events.forEach(event => {
-					if(event.target == event.currentTarget) {
-						event.changes.deleted && event.changes.deleted.forEach(item => {
-							//$tw.utils.log(`['${transaction.origin}'] Deleting tiddler: ${item.content.type.get('title')}`);
-							// A tiddler was deleted
-							this.wiki.deleteTiddler(item.content.type.get('title'));
-						});
-						event.changes.added && event.changes.added.forEach(item => {
+		const twCursors = null //quill.getModule('cursors') || null
+		this.twCursors = twCursors
+		this.awareness = awareness
+		this._awarenessChange = ({ added, removed, updated }) => {
+			const states = /** @type {Awareness} */ (awareness).getStates()
+			added.forEach(id => {
+				updateCursor(twCursors, states.get(id), id, wikiDoc, wikiTiddlers)
+			})
+			updated.forEach(id => {
+				updateCursor(twCursors, states.get(id), id, wikiDoc, wikiTiddlers)
+			})
+			removed.forEach(id => {
+				twCursors.removeCursor(id.toString())
+			})
+		}
+		this._tiddlersObserver = (events,transaction) => {
+			mux(() => {
+				if(transaction.origin !== this) {
+					events.forEach(event => {
+						if(event.target == event.currentTarget) {
+							event.changes.deleted && event.changes.deleted.forEach(item => {
+								$tw.utils.log(`['binding'] Deleting tiddler: ${item.content.type.get('title')}`);
+								// A tiddler was deleted
+								state.wiki.deleteTiddler(item.content.type.get('title'));
+							});
+							event.changes.added && event.changes.added.forEach(item => {
+								// A tiddler was added
+								let title = item.content.type.get('title'),
+									fields = item.content.type.toJSON();
+								$tw.utils.log(`['binding'] Added tiddler: ${title}`);
+								state.wiki.addTiddler(new $tw.Tiddler(fields,{title: title}));
+							});
+						} else {
 							// A tiddler was updated
-							let title = item.content.type.get('title');
-							//$tw.utils.log(`['${transaction.origin}'] Updating tiddler: ${title}`);
-							$tw.syncer.titlesToBeLoaded[title] = true;
-						});
-					} else {
-						// A tiddler was updated
-						let title = event.target.get('title');
-						$tw.utils.log(`['${transaction.origin}'] Updating tiddler: ${title}`);
-						$tw.syncer.titlesToBeLoaded[title] = true;
+							let title = event.target.get('title'),
+								fields = event.target.toJSON();
+							$tw.utils.log(`['binding'] Updating tiddler: ${title}`);
+							state.wiki.addTiddler(new $tw.Tiddler(fields,{title: title}));
+						}
+					});
+					state.syncer.processTaskQueue();
+				}
+			})
+		}
+		this.wikiTiddlers.observeDeep(this._tiddlersObserver)
+		this._updateSelection = () => {
+			// always check selection
+			if (awareness && twCursors) {
+				const sel = state.wiki.getSelection()
+				const aw = /** @type {any} */ (awareness.getLocalState())
+				if (sel === null) {
+					if (awareness.getLocalState() !== null) {
+						awareness.setLocalStateField('cursor', /** @type {any} */ (null))
+					}
+				} else {
+					const anchor = Y.createRelativePositionFromTypeIndex(wikiTiddlers, sel.index)
+					const head = Y.createRelativePositionFromTypeIndex(wikiTiddlers, sel.index + sel.length)
+					if (!aw || !aw.cursor || !Y.compareRelativePositions(anchor, aw.cursor.anchor) || !Y.compareRelativePositions(head, aw.cursor.head)) {
+						awareness.setLocalStateField('cursor', {
+							anchor,
+							head
+						})
+					}
+				}
+				// update all remote cursor locations
+				awareness.getStates().forEach((aw, clientId) => {
+					updateCursor(twCursors, aw, clientId, wikiDoc, wikiTiddlers)
+				})
+			}
+		}
+		this._save = (tiddler) => {
+			let title = tiddler.fields.title;
+			let tiddlerIndex = this.wikiTitles.toArray().indexOf(title);
+			let tsIndex = this.wikiTombstones.toArray().indexOf(title);
+			let changedFields = {},
+				tiddlerFields = tiddler.getFieldStrings();
+			$tw.utils.each(tiddlerFields,(field,name) => {
+				if(tiddlerIndex == -1 || !this.wikiTiddlers.get(tiddlerIndex).has(name) || 
+					$tw.utils.hashString(field) !== $tw.utils.hashString(this.wikiTiddlers.get(tiddlerIndex).get(name))) {
+					changedFields[name] = field;
+				}
+			});
+			if(Object.keys(changedFields).length > 0) {
+				this.wikiDoc.transact(() => {
+					$tw.utils.log(`['binding'] updating Y.Map: ${title}`);
+					if(tiddlerIndex == -1){
+						this.wikiTiddlers.push([new Y.Map()]);
+						this.wikiTitles.push([title]);
+						tiddlerIndex = this.wikiTitles.toArray().indexOf(title);
+					}
+					if(tsIndex !== -1) {
+						this.wikiTombstones.delete(tsIndex,1)
+					}
+					let tiddlerMap = this.wikiTiddlers.get(tiddlerIndex);
+					$tw.utils.each(tiddlerMap.toJSON(),(field,name) => {
+						if(Object.keys(tiddler.fields).indexOf(name) == -1) {
+							tiddlerMap.delete(name);
+						}
+					});
+					$tw.utils.each(changedFields,(field,name) => {
+						tiddlerMap.set(name,field);
+					});		
+				},this)
+			}
+		}
+		this._load = (title) => {
+			let fields = null;
+			let tiddlerIndex = this.wikiTitles.toArray().indexOf(title)
+			let tsIndex = this.wikiTombstones.toArray().indexOf(title)
+			if(tsIndex == -1 && tiddlerIndex !== -1) {
+				fields = this.wikiTiddlers.get(tiddlerIndex).toJSON()
+			}
+			return fields;
+		}
+		this._delete = (title) => {
+			let tiddlerIndex = this.wikiTitles.toArray().indexOf(title)
+			let tsIndex = this.wikiTombstones.toArray().indexOf(title)
+			this.wikiDoc.transact(() => {
+				if(tiddlerIndex !== -1 ) {
+					this.wikiTitles.delete(tiddlerIndex,1)
+					this.wikiTiddlers.delete(tiddlerIndex,1)
+				}
+				if(tsIndex == -1) {
+					this.wikiTombstones.push([title])
+				}
+			},this);
+		}
+		mux(() => {
+			// Compare all tiddlers in the wiki to their YDoc maps on startup
+			this.wikiDoc.transact(() => {
+				// Delete those that are in wikiTitles, but not in the wiki
+				let titles = state.syncer.filterFn.call(state.wiki),
+					maps = this.wikiTitles.toArray(),
+					diff = maps.filter(x => titles.indexOf(x) === -1);
+				diff.forEach((title) => {
+					$tw.utils.log(`['binding'] deleting Y.Map: ${title}`);
+					this._delete(title);
+				});
+				// Update the tiddlers that changed during server restart
+				$tw.utils.each(titles,(title) => {
+					var tiddler = state.wiki.getTiddler(title);
+					if(tiddler) {
+						this._save(tiddler)
 					}
 				});
-				$tw.syncer.processTaskQueue();
-			}
-			const eventDelta = event.delta
-			// We always explicitly set attributes, otherwise concurrent edits may
-			// result in quill assuming that a text insertion shall inherit existing
-			// attributes.
-			const delta = []
-			for (let i = 0; i < eventDelta.length; i++) {
-			const d = eventDelta[i]
-			if (d.insert !== undefined) {
-				delta.push(Object.assign({}, d, { attributes: Object.assign({}, this._negatedUsedFormats, d.attributes || {}) }))
-			} else {
-				delta.push(d)
-			}
-			}
-			wiki.updateContents(delta, 'yjs')
+			},this);
 		})
-	 }
-	 this.wikiTiddlers.observeDeep(this._tiddlersObserver)
-	 this._quillObserver = (eventType, delta) => {
-	   if (delta && delta.ops) {
-		 // update content
-		 const ops = delta.ops
-		 ops.forEach(op => {
-		   if (op.attributes !== undefined) {
-			 for (let key in op.attributes) {
-			   if (this._negatedUsedFormats[key] === undefined) {
-				 this._negatedUsedFormats[key] = false
-			   }
-			 }
-		   }
-		 })
-		 mux(() => {
-		   wikiTiddlers.applyDelta(ops)
-		 })
-	   }
-	   // always check selection
-	   if (awareness && twCursors) {
-		 const sel = wiki.getSelection()
-		 const aw = /** @type {any} */ (awareness.getLocalState())
-		 if (sel === null) {
-		   if (awareness.getLocalState() !== null) {
-			 awareness.setLocalStateField('cursor', /** @type {any} */ (null))
-		   }
-		 } else {
-		   const anchor = Y.createRelativePositionFromTypeIndex(wikiTiddlers, sel.index)
-		   const head = Y.createRelativePositionFromTypeIndex(wikiTiddlers, sel.index + sel.length)
-		   if (!aw || !aw.cursor || !Y.compareRelativePositions(anchor, aw.cursor.anchor) || !Y.compareRelativePositions(head, aw.cursor.head)) {
-			 awareness.setLocalStateField('cursor', {
-			   anchor,
-			   head
-			 })
-		   }
-		 }
-		 // update all remote cursor locations
-		 awareness.getStates().forEach((aw, clientId) => {
-		   updateCursor(twCursors, aw, clientId, wikiDoc, wikiTiddlers)
-		 })
-	   }
-	 }
-	 wiki.on('editor-change', this._quillObserver)
-	 mux(() => {
-	   // This indirectly initializes _negatedUsedFormats.
-	   // Make sure that this call this after the _quillObserver is set.
-	   wiki.setContents(wikiTiddlers.toDelta())
-	 })
-	 // init remote cursors
-	 if (twCursors !== null && awareness) {
-	   awareness.getStates().forEach((aw, clientId) => {
-		 updateCursor(twCursors, aw, clientId, wikiDoc, wikiTiddlers)
-	   })
-	   awareness.on('change', this._awarenessChange)
-	 }
-   }
-   destroy () {
-	this.wikiTiddlers.unobserve(this._tiddlersObserver)
-	 this.wiki.off('editor-change', this._quillObserver)
-	 if (this.awareness) {
-	   this.awareness.off('change', this._awarenessChange)
-	 }
-   }
+		// init remote cursors
+		if (twCursors !== null && awareness) {
+			awareness.getStates().forEach((aw, clientId) => {
+				updateCursor(twCursors, aw, clientId, wikiDoc, wikiTiddlers)
+			})
+			awareness.on('change', this._awarenessChange)
+		}
+	}
+	save (tiddler) {
+		this._save(tiddler)
+		this._updateSelection()
+	}
+	load (title) {
+		return this._load(title)
+	}
+	delete (title) {
+		this._delete(title)
+	}
+	destroy () {
+		this.wikiTiddlers.unobserve(this._tiddlersObserver)
+		if(this.awareness) {
+			this.awareness.off('change', this._awarenessChange)
+		}
+	}
  }
 
 exports.TiddlywikiBinding = TiddlywikiBinding;

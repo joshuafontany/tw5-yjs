@@ -36,30 +36,25 @@ function WebSocketServer(options) {
 	this.on('listening',this.serverOpened);
 	this.on('close',this.serverClosed);
 	this.on('connection',this.handleWSConnection);
-	// Persistence
-	this.persistenceDir = options.persistenceDir;
-	if(false && typeof this.persistenceDir === 'string') {
-		$tw.utils.log('Persisting Y documents to "' + options.persistenceDir + '"')
-		const LeveldbPersistence = require('./y-leveldb.cjs').LeveldbPersistence
-		const ldb = new LeveldbPersistence(options.persistenceDir)
-		$tw.ypersistence = {
-			provider: ldb,
-			bindState: async (docName,ydoc) => {
-				const persistedYdoc = await ldb.getYDoc(docName)
-				const newUpdates = Y.encodeStateAsUpdate(ydoc)
-				ldb.storeUpdate(docName,newUpdates)
-				Y.applyUpdate(ydoc,Y.encodeStateAsUpdate(persistedYdoc))
-				ydoc.on('update',update => {
-					ldb.storeUpdate(docName,update)
-				})
-			},
-			writeState: async (docName, ydoc) => {}
-		}
-	}
-	// Add an api key to all wikis and init their Yjs types
-	$tw.utils.initWikiDoc($tw);
+	// Add an api key to all wikis
+	let tiddler = $tw.wiki.getTiddler('$:/config/tiddlyweb/host'),
+	newFields = {
+		title: '$:/config/tiddlyweb/host',
+		key: tiddler && $tw.utils.uuid.validate(tiddler.fields.key) ? tiddler.fields.key : $tw.utils.uuid.v4()
+	};
+	$tw.wiki.addTiddler(new $tw.Tiddler(tiddler, newFields));
+	// Set the binding
+	$tw.syncadaptor.bind($tw);
 	$tw.states.forEach(function(state,pathPrefix) {
-		$tw.utils.initWikiDoc(state);
+		// Setup the config api key.
+		let tiddler = state.wiki.getTiddler('$:/config/tiddlyweb/host'),
+		newFields = {
+			title: '$:/config/tiddlyweb/host',
+			key: tiddler && $tw.utils.uuid.validate(tiddler.fields.key) ? tiddler.fields.key : $tw.utils.uuid.v4()
+		};
+		state.wiki.addTiddler(new $tw.Tiddler(tiddler, newFields));
+		// Set the binding
+		state.syncadaptor.bind(state);
 	})
 }
 

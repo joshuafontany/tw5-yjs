@@ -51,8 +51,7 @@ Command.prototype.execute = function () {
 	$tw.wsServer = new WebSocketServer({
 		clientTracking: false,
 		noServer: true, // We roll our own Upgrade
-		httpServer: nodeServer,
-		persistenceDir: this.server.get('y-persistence')
+		httpServer: nodeServer
 	});
 	// Handle upgrade events
 	nodeServer.on('upgrade', function (request, socket, head) {

@@ -9587,4 +9587,4 @@ exports.transact = transact;
 exports.tryGc = tryGc;
 exports.typeListToArraySnapshot = typeListToArraySnapshot;
 exports.typeMapGetSnapshot = typeMapGetSnapshot;
-//# sourceMappingURL=yjs.cjs.map
+////# sourceMappingURL=yjs.cjs.map
