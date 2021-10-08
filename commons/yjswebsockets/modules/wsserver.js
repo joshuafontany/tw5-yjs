@@ -44,7 +44,7 @@ function WebSocketServer(options) {
 	};
 	$tw.wiki.addTiddler(new $tw.Tiddler(tiddler, newFields));
 	// Set the binding
-	$tw.syncadaptor.bind($tw);
+	$tw.utils.getYBinding($tw.syncadaptor.wikiDoc,$tw);
 	$tw.states.forEach(function(state,pathPrefix) {
 		// Setup the config api key.
 		let tiddler = state.wiki.getTiddler('$:/config/tiddlyweb/host'),
@@ -54,7 +54,7 @@ function WebSocketServer(options) {
 		};
 		state.wiki.addTiddler(new $tw.Tiddler(tiddler, newFields));
 		// Set the binding
-		state.syncadaptor.bind(state);
+		$tw.utils.getYBinding(state.syncadaptor.wikiDoc,state);
 	})
 }
 

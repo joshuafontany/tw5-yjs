@@ -15,7 +15,7 @@ const fs = require('fs'),
 	path = require('path'),
 	widget = require("$:/core/modules/widgets/widget.js");
 
-$tw.states = new Map();
+$tw.states = $tw.states || new Map();
 
 // State methods
 function State(serveInfo, pathPrefix) {

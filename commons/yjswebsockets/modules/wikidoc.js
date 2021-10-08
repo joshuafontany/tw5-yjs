@@ -165,7 +165,7 @@ class WikiDoc extends Y.Doc {
 								session.send(encoderAwareness, this.name);
 							}
 							// Notify listeners
-							session.emit('handshake');
+							session.emit('handshake',[session]);
 							break
 						}
 						case messageHeartbeat: {

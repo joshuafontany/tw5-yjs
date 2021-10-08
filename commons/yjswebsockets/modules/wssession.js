@@ -90,7 +90,7 @@ messageHandlers[messageHandshake] = (encoder, decoder, session, doc, emitSynced,
 		session.send(encoderAwarenessState, session.pathPrefix);
 	}
 	// Notify listeners
-	session.emit('handshake');
+	session.emit('handshake',[session]);
 };
 
 messageHandlers[messageHeartbeat] = (encoder, decoder, session, doc, emitSynced, messageType) => {
