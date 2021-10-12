@@ -1,0 +1,13 @@
+{
+  "tiddlers": [
+    {
+      "file": "delta-rollup.js",
+      "fields": {
+        "title": "$:/plugins/commons/yjs/external/quill-delta/delta.js",
+        "module-type": "library",
+        "type": "application/javascript",
+        "source": "https://github.com/quilljs/delta"
+      }
+    }
+  ]
+}

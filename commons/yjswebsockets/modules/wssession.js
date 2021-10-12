@@ -76,7 +76,7 @@ messageHandlers[messageHandshake] = (encoder, decoder, session, doc, emitSynced,
 	// Start a heartbeat
 	session.heartbeat();
 	// Start a sync
-	$tw.utils.log(`['${session.id}'] Client Handshake`);
+	$tw.utils.log(`['${session.username}'] Client Handshake ${session.id}`);
 	// send sync step 1
 	const encoderSync = encoding.createEncoder()
 	encoding.writeVarUint(encoderSync, messageSync)
@@ -167,7 +167,7 @@ const setupWS = (session) => {
 			}
 		};
 		websocket.onclose = event => {
-			$tw.utils.log(`['${session.id}'] Closed socket ${websocket.url}`);
+			$tw.utils.log(`['${session.username}'] Closed socket ${websocket.url}`);
 			// Clear the ping timers
 			clearTimeout(session.pingTimeout);
 			clearTimeout(session.ping);
@@ -212,7 +212,7 @@ const setupWS = (session) => {
 			}, session]);
 		}
 		websocket.onopen = () => {
-			$tw.utils.log(`['${session.id}'] Opened socket ${websocket.url}`);
+			$tw.utils.log(`['${session.username}'] Opened socket ${websocket.url}`);
 			// Reset connection state
 			session.connecting = false;
 			session.connected = true;

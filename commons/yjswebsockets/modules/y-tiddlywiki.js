@@ -13,9 +13,10 @@ module-type: library
  * @module bindings/tiddlywiki
  */
 
- const { createMutex } = require('./lib0/dist/mutex.cjs');
- const Y = require('./yjs.cjs');
  const { Awareness } = require('./awareness.cjs');
+ const { createMutex } = require('./lib0/dist/mutex.cjs');
+ const Delta = require('./external/quill-delta/delta.js');
+ const Y = require('./yjs.cjs');
  
  /**
   * @param {any} twCursors
@@ -50,10 +51,10 @@ module-type: library
 		const mux = createMutex()
 		this.mux = mux
 		this.wikiDoc = wikiDoc
-		const wikiTiddlers = this.wikiDoc.getArray("wikiTiddlers");
+		const wikiTiddlers = this.wikiDoc.getArray("tiddlers");
 		this.wikiTiddlers = wikiTiddlers;
-		this.wikiTitles = this.wikiDoc.getArray("wikiTitles");
-		this.wikiTombstones = this.wikiDoc.getArray("wikiTombstones");
+		this.wikiTitles = this.wikiDoc.getArray("titles");
+		this.wikiTombstones = this.wikiDoc.getArray("tombstones");
 
 		const twCursors = null //quill.getModule('cursors') || null
 		this.twCursors = twCursors
@@ -61,16 +62,21 @@ module-type: library
 		this._awarenessChange = ({ added, removed, updated }) => {
 			const states = /** @type {Awareness} */ (awareness).getStates()
 			added.forEach(id => {
-				updateCursor(twCursors, states.get(id), id, wikiDoc, wikiTiddlers)
+				//updateCursor(twCursors, states.get(id), id, wikiDoc, wikiTiddlers)
 			})
 			updated.forEach(id => {
-				updateCursor(twCursors, states.get(id), id, wikiDoc, wikiTiddlers)
+				//updateCursor(twCursors, states.get(id), id, wikiDoc, wikiTiddlers)
 			})
 			removed.forEach(id => {
-				twCursors.removeCursor(id.toString())
+				//twCursors.removeCursor(id.toString())
 			})
 		}
-		this._saveTiddler = (title,fields) => {
+		this._storeTiddler = (yMap) => {debugger;
+			let title = yMap.get('title'),
+				fields = {};
+			yMap.forEach((value,key) => {
+				fields[key] = value.toString();
+			});
 			if($tw.node) {
 				state.wiki.addTiddler(new $tw.Tiddler(fields,{title: title}));
 			} else {
@@ -80,22 +86,30 @@ module-type: library
 		this._tiddlersObserver = (events,transaction) => {
 			mux(() => {
 				if(transaction.origin !== this) {
+					let changedTiddlers = new Map();
 					events.forEach(event => {
 						if(event.target == event.currentTarget) {
 							event.changes.added && event.changes.added.forEach(item => {
-								// A tiddler was added
-								let title = item.content.type.get('title'),
-									fields = item.content.type.toJSON();
-								$tw.utils.log(`['${transaction.origin.username}|${this.wikiDoc.name}'] Saved: ${title}`);
-								this._saveTiddler(title,fields);
+								// tiddlersMap event, a tiddler was added
+								let target = item.content.type,
+								title = target.get('title');
+								if(!changedTiddlers.has(title)){
+									changedTiddlers.set(title,target);
+								}
 							});
 						} else {
-							// A tiddler was updated
-							let title = event.target.get('title'),
-								fields = event.target.toJSON();
-							$tw.utils.log(`['${transaction.origin.username}|${this.wikiDoc.name}'] Saved: ${title}`);
-							this._saveTiddler(title,fields);
+							// YMap or YText event, a tiddler was updated
+							let target = event.target instanceof Y.Map? event.target: event.target.parent,
+								title = target.get('title');
+							if(!changedTiddlers.has(title)){
+								changedTiddlers.set(title,target);
+							}
 						}
+					});
+					changedTiddlers.forEach((target,title) => {
+						let username = transaction.origin.username || "binding";
+						$tw.utils.log(`['${username}'] Store: ${this.wikiDoc.name}#${title}`);
+						this._storeTiddler(target);
 					});
 				}
 			})
@@ -106,7 +120,8 @@ module-type: library
 					event.changes.added && event.changes.added.forEach(item => {
 						$tw.utils.each(item.content.arr,(title) => {
 							// A tiddler was deleted
-							$tw.utils.log(`['${transaction.origin.username}|${this.wikiDoc.name}'] Deleted: ${title}`);
+							let username = transaction.origin.username || "binding";
+							$tw.utils.log(`['${username}'] Delete: ${this.wikiDoc.name}#${title}`);
 							state.wiki.deleteTiddler(title);
 						});						
 					});
@@ -144,17 +159,21 @@ module-type: library
 			let title = tiddler.fields.title;
 			let tiddlerIndex = this.wikiTitles.toArray().indexOf(title);
 			let tsIndex = this.wikiTombstones.toArray().indexOf(title);
-			let changedFields = {},
+			let changedFields = {}, deletedFields = [],
 				tiddlerFields = tiddler.getFieldStrings();
 			$tw.utils.each(tiddlerFields,(field,name) => {
-				if(tiddlerIndex == -1 || !this.wikiTiddlers.get(tiddlerIndex).has(name) || 
-					$tw.utils.hashString(field) !== $tw.utils.hashString(this.wikiTiddlers.get(tiddlerIndex).get(name))) {
+				if(tiddlerIndex == -1 || !this.wikiTiddlers.get(tiddlerIndex).has(name)) {
 					changedFields[name] = field;
+				} else {
+					let oldValue = this.wikiTiddlers.get(tiddlerIndex).get(name).toString();
+					if($tw.utils.hashString(oldValue) != $tw.utils.hashString(field) ){
+						changedFields[name] = field;
+					}
 				}
 			});
 			if(Object.keys(changedFields).length > 0) {
 				this.wikiDoc.transact(() => {
-					$tw.utils.log(`['binding'] updating: ${title}`);
+					$tw.utils.log(`['binding'] updating: ${this.wikiDoc.name}#${title}`);
 					if(tiddlerIndex == -1){
 						this.wikiTiddlers.push([new Y.Map()]);
 						this.wikiTitles.push([title]);
@@ -164,24 +183,40 @@ module-type: library
 						this.wikiTombstones.delete(tsIndex,1)
 					}
 					let tiddlerMap = this.wikiTiddlers.get(tiddlerIndex);
-					$tw.utils.each(tiddlerMap.toJSON(),(field,name) => {
-						if(Object.keys(tiddler.fields).indexOf(name) == -1) {
-							tiddlerMap.delete(name);
+					tiddlerMap.forEach((value,key) => {
+						if(Object.keys(tiddler.fields).indexOf(key) == -1) {
+							tiddlerMap.delete(key);
+						}
+					})
+					let textFields = ["draft.title","list","tags","text"];
+					$tw.utils.each(changedFields,(field,name) => {
+						if(textFields.indexOf(name) != -1 || name.startsWith("text")) {
+							let yText = tiddlerMap.has(name)? tiddlerMap.get(name): new Y.Text();
+							let oldDelta = new Delta().insert(yText.toString()),
+								newDelta = new Delta().insert(field),
+								diff = oldDelta.diff(newDelta);
+							if(diff.ops.length > 0) {
+								yText.applyDelta(diff.ops);
+							}
+							if (!tiddlerMap.has(name)) {
+								tiddlerMap.set(name,yText);
+							}
+						} else {
+							tiddlerMap.set(name,field);
 						}
 					});
-					$tw.utils.each(changedFields,(field,name) => {
-						tiddlerMap.set(name,field);
-					});		
 				},this)
 			}
 		}
 		this._load = (title) => {
-			$tw.utils.log(`['binding'] loading: ${title}`);
-			let fields = null;
+			$tw.utils.log(`['binding'] loading: ${this.wikiDoc.name}#${title}`);
+			let fields = {};
 			let tiddlerIndex = this.wikiTitles.toArray().indexOf(title)
 			let tsIndex = this.wikiTombstones.toArray().indexOf(title)
 			if(tsIndex == -1 && tiddlerIndex !== -1) {
-				fields = this.wikiTiddlers.get(tiddlerIndex).toJSON()
+				this.wikiTiddlers.get(tiddlerIndex).forEach((value,key) => {
+					fields[key] = value.toString()
+				})
 			}
 			return fields;
 		}
@@ -190,7 +225,7 @@ module-type: library
 			let tsIndex = this.wikiTombstones.toArray().indexOf(title)
 			if (tiddlerIndex !== -1 || tsIndex == -1) {
 				this.wikiDoc.transact(() => {
-					$tw.utils.log(`['binding'] deleting: ${title}`);
+					$tw.utils.log(`['binding'] deleting: ${this.wikiDoc.name}#${title}`);
 					if(tiddlerIndex !== -1 ) {
 						this.wikiTitles.delete(tiddlerIndex,1)
 						this.wikiTiddlers.delete(tiddlerIndex,1)
@@ -203,27 +238,27 @@ module-type: library
 		}
 		if($tw.node) {
 			mux(() => {
-				// Compare all tiddlers in the wiki to their YDoc maps on startup
+				// Compare all tiddlers in the wiki to their YDoc maps on node server startup
 				this.wikiDoc.transact(() => {
 					// Delete those that are in maps, but not in titles
 					let titles = state.syncer.filterFn.call(state.wiki),
 						maps = this.wikiTitles.toArray(),
 						diff = maps.filter(x => titles.indexOf(x) === -1);
 					diff.forEach((title) => {
-						$tw.utils.log(`['${this.wikiDoc.name}'] Startup, deleting: ${title}`);
+						$tw.utils.log(`['binding'] Startup, deleting: ${this.wikiDoc.name}#${title}`);
 						this._delete(title);
 					});
 					// Update the tiddlers that changed during server restart
 					$tw.utils.each(titles,(title) => {
 						var tiddler = state.wiki.getTiddler(title);
 						if(tiddler) {
-							$tw.utils.log(`['${this.wikiDoc.name}'] Startup, checking: ${title}`);
+							$tw.utils.log(`['binding'] Startup, checking: ${this.wikiDoc.name}#${title}`);
 							this._save(tiddler)
 						}
 					});
 				},this);
 			})
-		} else if (twCursors !== null && awareness) {
+		} else if (awareness && twCursors) {
 			// init remote cursors
 			awareness.getStates().forEach((aw, clientId) => {
 				updateCursor(twCursors, aw, clientId, wikiDoc, wikiTiddlers)

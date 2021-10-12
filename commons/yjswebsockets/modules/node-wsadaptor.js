@@ -25,7 +25,6 @@ function WebsocketAdaptor(options) {
 	this.logger = new $tw.utils.Logger("wsadaptor",{colour: "blue"});
     // disable gc when using snapshots!
 	this.gcEnabled = this.wiki.getTiddlerText("$:/config/yjs/gcEnabled","yes") == "yes";
-    this.binding = null;
 
 	// Attach a core filesystemadaptor to this syncadaptor
     this.fsadaptor = new FileSystemAdaptor(options);
@@ -62,6 +61,7 @@ WebsocketAdaptor.prototype.supportsLazyLoading = false;
 
 WebsocketAdaptor.prototype.setLoggerSaveBuffer = function(loggerForSaving) {
 	this.logger.setSaveBuffer(loggerForSaving);
+    this.fsadaptor.logger.setSaveBuffer(loggerForSaving);
 };
 
 WebsocketAdaptor.prototype.isReady = function() {
@@ -85,10 +85,10 @@ WebsocketAdaptor.prototype.saveTiddler = function(tiddler,callback,options) {
     let self = this;
     $tw.ybindings.get(this.pathPrefix).save(tiddler,function(err){
 		if(err) {
-			callback(err);
+			self.logger.log(err);
 		}
-        self.fsadaptor.saveTiddler(tiddler,callback,options)
 	})
+    this.fsadaptor.saveTiddler(tiddler,callback,options)
 };
 
 /*
@@ -108,10 +108,10 @@ WebsocketAdaptor.prototype.deleteTiddler = function(title,callback,options) {
     let self = this;
     $tw.ybindings.get(this.pathPrefix).delete(title,function(err){
 		if(err) {
-			callback(err);
+			self.logger.log(err);
 		}
-        self.fsadaptor.deleteTiddler(title,callback,options);
 	});
+    this.fsadaptor.deleteTiddler(title,callback,options);
 };
 
 if($tw.node) {

@@ -24,7 +24,6 @@ function WebsocketAdaptor(options) {
 	this.logger = new $tw.utils.Logger("wsadaptor");
 	// disable gc when using snapshots!
 	this.gcEnabled = this.wiki.getTiddlerText("$:/config/yjs/gcEnabled","yes") == "yes";
-	this.binding = null;
 	this.session = null;
 
 	this.hasStatus = false;

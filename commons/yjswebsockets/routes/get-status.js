@@ -23,9 +23,6 @@ Returns server status information
 		// build the status objects
 		if(state.queryParameters && state.queryParameters["wiki"] && state.queryParameters["session"]) {
 			let conectionIp = request.headers['x-forwarded-for'] ? request.headers['x-forwarded-for'].split(/\s*,\s*/)[0] : request.connection.remoteAddress;
-			if(state.server.get('debug-level') !== "none") {
-				$tw.utils.log(`['${state.queryParameters["session"]}'] GET ${state.urlInfo.href} (${conectionIp})`);
-			}
 			let session = $tw.wsServer.getSession(state.queryParameters["session"]);
 			if(!session || state.boot.pathPrefix !== session.pathPrefix || state.authenticatedUsername !== session.username) {
 				session = $tw.wsServer.newSession({
@@ -42,6 +39,9 @@ Returns server status information
 					ip: conectionIp,
 					url: state.urlInfo
 				});
+			}
+			if(state.server.get('debug-level') !== "none") {
+				$tw.utils.log(`['${session.username}'] GET ${state.urlInfo.href} (${conectionIp})`);
 			}
 			// Set a login window for 60 seconds.
 			$tw.wsServer.refreshSession(session, 1000 * 60)
