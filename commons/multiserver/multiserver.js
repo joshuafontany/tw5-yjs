@@ -89,7 +89,7 @@ if($tw.node) {
 		options = options || {};
 		let potentialMatch = $tw;
 		$tw.states.forEach(function (state, key) {
-			var match = Object.prototype.toString.call(state.regexp) == '[object RegExp]' && state.regexp.exec(request.url);
+			var match = Object.prototype.toString.call(state.boot.regexp) == '[object RegExp]' && state.boot.regexp.exec(request.url);
 			if(match) {
 				potentialMatch = state;
 			}
