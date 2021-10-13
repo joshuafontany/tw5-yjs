@@ -140,7 +140,7 @@ class WikiDoc extends Y.Doc {
 							break
 						}
 						case messageHandshake: {
-							console.log(`['${session.id}'] Server Handshake`);
+							console.log(`['${session.username}'] Session: ${session.id} Server Handshake`);
 							// Refresh the session to expire in 60 minutes
 							$tw.wsServer.refreshSession(session, 1000 * 60 * 60);
 							// send messageHandshake
@@ -183,11 +183,11 @@ class WikiDoc extends Y.Doc {
 							break
 						}
 						default: {
-							console.error(`['${session.id}'] Unable to compute message, ydoc ${message.doc}`);
+							console.error(`['${session.username}'] Session: ${session.id} Unable to compute message, ydoc ${message.doc}`);
 						}
 					}
 				} else {
-					console.error(`['${session.id}'] Unable to parse message:`, event);
+					console.error(`['${session.username}'] Session: ${session.id} Unable to parse message:`, event);
 					// send messageAuth denied
 					const encoder = encoding.createEncoder();
 					encoding.writeVarUint(encoder, messageAuth);
@@ -216,7 +216,7 @@ class WikiDoc extends Y.Doc {
 					}
 				}
 				if(session.isReady()) {
-					session.ws.close(1000, `['${this.id}'] Websocket closed by the server`, event);
+					session.ws.close(1000, `['${this.username}'] Session: ${session.id} Websocket closed by the server: ${this.id}`, event);
 				}
 			})
 		}

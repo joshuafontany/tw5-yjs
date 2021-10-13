@@ -43,29 +43,30 @@ module-type: library
  
  class TiddlywikiBinding {
 	/**
-		* @param {Y.Doc} wikiDoc
+		* @param {string} pathPrefix
 		* @param {state} state
 		* @param {Awareness} [awareness]
 		*/
-	constructor (wikiDoc, state, awareness) {
+	constructor (pathPrefix, state, awareness) {
 		const mux = createMutex()
 		this.mux = mux
+		const wikiDoc = $tw.utils.getYDoc(pathPrefix);
 		this.wikiDoc = wikiDoc
-		const wikiTiddlers = this.wikiDoc.getArray("tiddlers");
+		const wikiTiddlers = wikiDoc.getArray("tiddlers");
 		this.wikiTiddlers = wikiTiddlers;
-		this.wikiTitles = this.wikiDoc.getArray("titles");
-		this.wikiTombstones = this.wikiDoc.getArray("tombstones");
+		this.wikiTitles = wikiDoc.getArray("titles");
+		this.wikiTombstones = wikiDoc.getArray("tombstones");
 
 		const twCursors = null //quill.getModule('cursors') || null
 		this.twCursors = twCursors
 		this.awareness = awareness
 		this._awarenessChange = ({ added, removed, updated }) => {
-			const states = /** @type {Awareness} */ (awareness).getStates()
+			const awarenessStates = /** @type {Awareness} */ (awareness).getStates()
 			added.forEach(id => {
-				//updateCursor(twCursors, states.get(id), id, wikiDoc, wikiTiddlers)
+				//updateCursor(twCursors, awarenessStates.get(id), id, wikiDoc, wikiTiddlers)
 			})
 			updated.forEach(id => {
-				//updateCursor(twCursors, states.get(id), id, wikiDoc, wikiTiddlers)
+				//updateCursor(twCursors, awarenessStates.get(id), id, wikiDoc, wikiTiddlers)
 			})
 			removed.forEach(id => {
 				//twCursors.removeCursor(id.toString())
@@ -108,7 +109,7 @@ module-type: library
 					});
 					changedTiddlers.forEach((target,title) => {
 						let username = transaction.origin.username || "binding";
-						$tw.utils.log(`['${username}'] Stored: ${this.wikiDoc.name}, ${title}`);
+						$tw.utils.log(`['${username}'] Stored://root${this.wikiDoc.name}/#${title}`);
 						this._storeTiddler(target);
 					});
 				}
@@ -121,7 +122,7 @@ module-type: library
 						$tw.utils.each(item.content.arr,(title) => {
 							// A tiddler was deleted
 							let username = transaction.origin.username || "binding";
-							$tw.utils.log(`['${username}'] Deleted: ${this.wikiDoc.name}, ${title}`);
+							$tw.utils.log(`['${username}'] Deleted://root${this.wikiDoc.name}/#${title}`);
 							state.wiki.deleteTiddler(title);
 						});						
 					});
@@ -173,7 +174,7 @@ module-type: library
 			});
 			if(Object.keys(changedFields).length > 0) {
 				this.wikiDoc.transact(() => {
-					$tw.utils.log(`['binding'] updating: ${this.wikiDoc.name}, ${title}`);
+					$tw.utils.log(`['binding'] Updating://root${this.wikiDoc.name}/#${title}`);
 					if(tiddlerIndex == -1){
 						this.wikiTiddlers.push([new Y.Map()]);
 						this.wikiTitles.push([title]);
@@ -209,7 +210,7 @@ module-type: library
 			}
 		}
 		this._load = (title) => {
-			$tw.utils.log(`['binding'] loading: ${this.wikiDoc.name}, ${title}`);
+			$tw.utils.log(`['binding'] Loading://root${this.wikiDoc.name}/#${title}`);
 			let fields = {};
 			let tiddlerIndex = this.wikiTitles.toArray().indexOf(title)
 			let tsIndex = this.wikiTombstones.toArray().indexOf(title)
@@ -225,7 +226,7 @@ module-type: library
 			let tsIndex = this.wikiTombstones.toArray().indexOf(title)
 			if (tiddlerIndex !== -1 || tsIndex == -1) {
 				this.wikiDoc.transact(() => {
-					$tw.utils.log(`['binding'] deleting: ${this.wikiDoc.name}, ${title}`);
+					$tw.utils.log(`['binding'] Deleting://root${this.wikiDoc.name}/#${title}`);
 					if(tiddlerIndex !== -1 ) {
 						this.wikiTitles.delete(tiddlerIndex,1)
 						this.wikiTiddlers.delete(tiddlerIndex,1)
@@ -245,14 +246,14 @@ module-type: library
 						maps = this.wikiTitles.toArray(),
 						diff = maps.filter(x => titles.indexOf(x) === -1);
 					diff.forEach((title) => {
-						$tw.utils.log(`['binding'] Startup, deleting: ${this.wikiDoc.name}, ${title}`);
+						$tw.utils.log(`['binding'] Startup, deleting://root${this.wikiDoc.name}/#${title}`);
 						this._delete(title);
 					});
 					// Update the tiddlers that changed during server restart
 					$tw.utils.each(titles,(title) => {
 						var tiddler = state.wiki.getTiddler(title);
 						if(tiddler) {
-							$tw.utils.log(`['binding'] Startup, checking: ${this.wikiDoc.name}, ${title}`);
+							$tw.utils.log(`['binding'] Startup, testing://root${this.wikiDoc.name}/#${title}`);
 							this._save(tiddler)
 						}
 					});

@@ -16,7 +16,6 @@ if($tw.node) {
 	const WS = require('./external/ws/ws.js');
 	const WebsocketSession = require('./wssession.js').WebsocketSession;
 	const Y = require('./yjs.cjs');
-
 	const CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host";
 
 /*
@@ -37,24 +36,24 @@ function WebSocketServer(options) {
 	this.on('close',this.serverClosed);
 	this.on('connection',this.handleWSConnection);
 	// Add an api key to all wikis
-	let tiddler = $tw.wiki.getTiddler('$:/config/tiddlyweb/host'),
-	newFields = {
-		title: '$:/config/tiddlyweb/host',
-		key: tiddler && $tw.utils.uuid.validate(tiddler.fields.key) ? tiddler.fields.key : $tw.utils.uuid.v4()
-	};
-	$tw.wiki.addTiddler(new $tw.Tiddler(tiddler, newFields));
-	// Set the binding
-	$tw.utils.getYBinding($tw.syncadaptor.wikiDoc,$tw);
-	$tw.states.forEach(function(state,pathPrefix) {
-		// Setup the config api key.
-		let tiddler = state.wiki.getTiddler('$:/config/tiddlyweb/host'),
+	let tiddler = $tw.wiki.getTiddler(CONFIG_HOST_TIDDLER),
 		newFields = {
-			title: '$:/config/tiddlyweb/host',
+			title: CONFIG_HOST_TIDDLER,
 			key: tiddler && $tw.utils.uuid.validate(tiddler.fields.key) ? tiddler.fields.key : $tw.utils.uuid.v4()
 		};
-		state.wiki.addTiddler(new $tw.Tiddler(tiddler, newFields));
+	$tw.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
+	// Set the binding
+	$tw.syncadaptor.setYBinding($tw);
+	$tw.states.forEach(function(state,pathPrefix) {
+		// Setup the config api key.
+		let tiddler = state.wiki.getTiddler(CONFIG_HOST_TIDDLER),
+			newFields = {
+				title: CONFIG_HOST_TIDDLER,
+				key: tiddler && $tw.utils.uuid.validate(tiddler.fields.key) ? tiddler.fields.key : $tw.utils.uuid.v4()
+			};
+		state.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
 		// Set the binding
-		$tw.utils.getYBinding(state.syncadaptor.wikiDoc,state);
+		state.syncadaptor.setYBinding(state);
 	})
 }
 
@@ -137,13 +136,13 @@ WebSocketServer.prototype.handleWSConnection = function(socket,request,state) {
 
 		let wikiDoc = $tw.utils.getYDoc(session.pathPrefix);
 		wikiDoc.sessions.set(session, new Set())
-		console.log(`['${state.urlInfo.searchParams.get("session")}'] Opened socket ${socket._socket._peername.address}:${socket._socket._peername.port}`);
+		console.log(`['${session.username}'] Session: ${session.id} Opened socket ${socket._socket._peername.address}:${socket._socket._peername.port}`);
 		// Event handlers
 		socket.on('message', function(event) {
 			wikiDoc.emit('message',[session,event]);
 		});
 		socket.on('close', function(event) {
-			console.log(`['${session.id}'] Closed socket ${socket._socket._peername.address}:${socket._socket._peername.port}	(code ${socket._closeCode})`);
+			console.log(`['${session.username}'] Session: ${session.id} Closed socket ${socket._socket._peername.address}:${socket._socket._peername.port}	(code ${socket._closeCode})`);
 			session.connecting = false;
 			session.connected = false;
 			session.synced = false;
@@ -154,7 +153,7 @@ WebSocketServer.prototype.handleWSConnection = function(socket,request,state) {
 			},session]);
 		});
 		socket.on('error', function(error) {
-			console.log(`['${session.id}'] socket error:`, error);
+			console.log(`['${session.username}'] Session: ${session.id} Socket error:`, error);
 			wikiDoc.emit('close',[session,error]);
 			session.emit('error', [{
 				error: error

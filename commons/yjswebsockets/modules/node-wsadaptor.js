@@ -50,9 +50,9 @@ function WebsocketAdaptor(options) {
     } */
 
 	// Setup the Y wikiDoc
-	this.wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
+	let wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
 	// bind to the persistence provider
-	//this.persistence.bindState(this.pathPrefix,this.wikiDoc);
+	//this.persistence.bindState(this.pathPrefix,wikiDoc);
 }
 
 WebsocketAdaptor.prototype.name = "wsadaptor";
@@ -64,8 +64,12 @@ WebsocketAdaptor.prototype.setLoggerSaveBuffer = function(loggerForSaving) {
     this.fsadaptor.logger.setSaveBuffer(loggerForSaving);
 };
 
+WebsocketAdaptor.prototype.setYBinding = function(state,awareness) {
+	$tw.utils.getYBinding(this.pathPrefix,state,awareness);
+}
+
 WebsocketAdaptor.prototype.isReady = function() {
-	return !!this.wikiDoc && $tw.ybindings.has(this.wikiDoc.name);
+	return $tw.ydocs.has(this.pathPrefix) && $tw.ybindings.has(this.pathPrefix);
 };
 
 WebsocketAdaptor.prototype.getPathPrefix = function() {
@@ -77,6 +81,13 @@ WebsocketAdaptor.prototype.getPathPrefix = function() {
 WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {
 	return this.fsadaptor.getTiddlerInfo(tiddler);
 };
+
+/*
+Return null (updates from the Yjs binding are automatically stored in the wiki)
+*/
+WebsocketAdaptor.prototype.getUpdatedTiddlers = function(syncer,callback) {
+	callback(null,null);
+}
 
 /*
 Save a tiddler and invoke the callback with (err,adaptorInfo,revision)

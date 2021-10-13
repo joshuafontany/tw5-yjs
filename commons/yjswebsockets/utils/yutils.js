@@ -42,16 +42,16 @@ exports.getYDoc = function (docname, gc) {
 /**
  * Gets a Y-Tiddlywiki binding by name, whether in memory or on disk
  *
- * @param {Y.Doc} doc - the Y.Doc to bind
+ * @param {string} pathPrefix - the Y.Doc to bind
  * @param {state} state - state || $tw
  * @param {Y.awareness} awareness - state || $tw
  * @return {TiddlywikiBinding}
  */
-exports.getYBinding = function (doc,state,awareness) {
-	if(!doc || !state) return null;
-	return map.setIfUndefined($tw.ybindings, doc.name, () => {
-		const binding = new TiddlywikiBinding(doc,state,awareness);
-		$tw.ybindings.set(doc.name,binding);
+exports.getYBinding = function (pathPrefix,state,awareness) {
+	if(!typeof pathPrefix == "string" || !state) return null;
+	return map.setIfUndefined($tw.ybindings, pathPrefix, () => {
+		const binding = new TiddlywikiBinding(pathPrefix,state,awareness);
+		$tw.ybindings.set(pathPrefix,binding);
 		return binding;
 	})
 }

@@ -49,9 +49,9 @@ function WebsocketAdaptor(options) {
 	}
 
 	// Setup the Y wikiDoc
-	this.wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
+	let wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
 	// bind to the persistence provider
-	//this.persistence.bindState(this.pathPrefix,this.wikiDoc);
+	//this.persistence.bindState(this.pathPrefix,wikiDoc);
 }
 
 // Syncadaptor properties
@@ -66,6 +66,10 @@ WebsocketAdaptor.prototype.setLoggerSaveBuffer = function(loggerForSaving) {
 	this.logger.setSaveBuffer(loggerForSaving);
 };
 
+WebsocketAdaptor.prototype.setYBinding = function(state,awareness) {
+	$tw.utils.getYBinding(this.pathPrefix,state,awareness);
+}
+
 WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {
 	/* 
 		Return the vector clock of the tiddler?
@@ -76,7 +80,7 @@ WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {
 }
 
 WebsocketAdaptor.prototype.isReady = function() {
-	return !!this.wikiDoc && $tw.ybindings.has(this.pathPrefix);
+	return $tw.ydocs.has(this.pathPrefix) && $tw.ybindings.has(this.pathPrefix);
 }
 
 WebsocketAdaptor.prototype.getHost = function() {
@@ -161,7 +165,7 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 					window.sessionStorage.setItem("ws-session", self.session.id)
 					// Bind after the doc has been synced
 					self.session.once('synced',function(state,session) {
-						$tw.utils.getYBinding(self.wikiDoc,$tw,session.awareness);
+						self.setYBinding($tw,session.awareness);
 					});
 					// Error handler
 					self.session.once('error',function(event,session) {
@@ -238,6 +242,13 @@ WebsocketAdaptor.prototype.logout = function(callback) {
 	this.logger.log("Logging out:",options);
 	$tw.utils.httpRequest(options);
 };
+
+/*
+Return null (updates from the Yjs binding are automatically stored in the wiki)
+*/
+WebsocketAdaptor.prototype.getUpdatedTiddlers = function(syncer,callback) {
+	callback(null,null);
+}
 
 /*
 Save a tiddler and invoke the callback with (err,adaptorInfo,revision)

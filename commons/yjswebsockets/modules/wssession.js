@@ -76,7 +76,7 @@ messageHandlers[messageHandshake] = (encoder, decoder, session, doc, emitSynced,
 	// Start a heartbeat
 	session.heartbeat();
 	// Start a sync
-	$tw.utils.log(`['${session.username}'] Client Handshake ${session.id}`);
+	$tw.utils.log(`['${session.username}'] Session: ${session.id} Client Handshake`);
 	// send sync step 1
 	const encoderSync = encoding.createEncoder()
 	encoding.writeVarUint(encoderSync, messageSync)
@@ -151,13 +151,13 @@ const setupWS = (session) => {
 				if( /** @type {any} */ (messageHandler)) {
 					messageHandler(encoder, decoder, session, eventDoc, true, messageType);
 				} else {
-					$tw.utils.warning(`['${session.id}'] Unable to compute message, ydoc ${message.doc}`);
+					$tw.utils.warning(`['${session.username}'] Session: ${session.id} Unable to compute message, ydoc ${message.doc.name}`);
 				}
 				if(encoding.length(encoder) > 1) {
 					session.send(encoder, eventDoc.name);
 				}
 			} else {
-				$tw.utils.warning(`['${session.id}'] Unable to parse message:`, event);
+				$tw.utils.warning(`['${session.username}'] Session: ${session.id} Unable to parse message:`, event);
 				// send messageAuth denied
 				const encoder = encoding.createEncoder();
 				encoding.writeVarUint(encoder, messageAuth);
@@ -167,7 +167,7 @@ const setupWS = (session) => {
 			}
 		};
 		websocket.onclose = event => {
-			$tw.utils.log(`['${session.username}'] Closed socket ${websocket.url}`);
+			$tw.utils.log(`['${session.username}'] Session: ${session.id} Closed socket ${websocket.url}`);
 			// Clear the ping timers
 			clearTimeout(session.pingTimeout);
 			clearTimeout(session.ping);
@@ -212,7 +212,7 @@ const setupWS = (session) => {
 			}, session]);
 		}
 		websocket.onopen = () => {
-			$tw.utils.log(`['${session.username}'] Opened socket ${websocket.url}`);
+			$tw.utils.log(`['${session.username}'] Session: ${session.id} Opened socket ${websocket.url}`);
 			// Reset connection state
 			session.connecting = false;
 			session.connected = true;
@@ -238,7 +238,7 @@ const setupHeartbeat = (session) => {
 	    // sends out pings plus a conservative assumption of the latency (10s).  
 	    session.pingTimeout = setTimeout(function() {
 	      if(session.isReady()) {
-	        session.ws.close(4000, `['${session.ws.id}'] Websocket closed by heartbeat, last message received ${new Date(session.lastMessageReceived*1000).toLocaleString()}`);
+	        session.ws.close(4000, `['${session.ws.username}'] Session: ${session.id} closed by heartbeat, last message received ${new Date(session.lastMessageReceived*1000).toLocaleString()}`);
 	      }
 	    }, session.settings.heartbeat.timeout + session.settings.heartbeat.interval); */
 	// Send the next heartbeat ping after session.settings.heartbeat.interval ms
@@ -419,17 +419,16 @@ class WebsocketSession extends observable_js.Observable {
 		if(this.client) {
 			this.shouldConnect = false;
 			if(this.isReady()) {
-				this.ws.close(1000, `['${this.id}'] Websocket closed by the client`, err);
+				this.ws.close(1000, `['${this.username}'] Session: ${session.id} closed by the client`, err);
 			}
 		} else {
-			let doc = $tw.utils.getYDoc(this.pathPrefix);
-			$tw.wsServer.closeWSConnection(doc, this, err);
+			$tw.wsServer.closeWSConnection($tw.utils.getYDoc(this.pathPrefix), this, err);
 		}
 	}
 
 	connect() {
 		if(!this.client || !this.url) {
-			$tw.utils.warning(`['${this.id}'] Websocket Session connect error: no client url`)
+			$tw.utils.warning(`['${this.username}']  Session: ${session.id} connect error: no client url`)
 			return;
 		}
 		this.shouldConnect = true;
@@ -498,7 +497,7 @@ class WebsocketSession extends observable_js.Observable {
 			decoder = decoding.createDecoder(message),
 			authed = !expired && decoding.readVarString(decoder) == this.id;
 		if(!authed) {
-			$tw.utils.warning(`['${this.id}'] WS authentication error` + expired ? `, session expired` : ``);
+			$tw.utils.warning(`['${this.username}']  Session: ${session.id} authentication error` + expired ? `, session expired` : ``);
 		}
 		return authed ? decoder : null;
 	}
