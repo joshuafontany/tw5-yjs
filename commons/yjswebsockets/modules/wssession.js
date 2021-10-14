@@ -419,7 +419,7 @@ class WebsocketSession extends observable_js.Observable {
 		if(this.client) {
 			this.shouldConnect = false;
 			if(this.isReady()) {
-				this.ws.close(1000, `['${this.username}'] Session: ${session.id} closed by the client`, err);
+				this.ws.close(1000, `['${this.username}'] Session: ${this.id} closed by the client`, err);
 			}
 		} else {
 			$tw.wsServer.closeWSConnection($tw.utils.getYDoc(this.pathPrefix), this, err);

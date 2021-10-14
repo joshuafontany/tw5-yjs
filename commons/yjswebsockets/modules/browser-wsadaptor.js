@@ -163,9 +163,22 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 					self.session = new WebsocketSession(options);
 					// Set the session id
 					window.sessionStorage.setItem("ws-session", self.session.id)
-					// Bind after the doc has been synced
+					// Bind and syncFromServer after the doc has been synced
 					self.session.once('synced',function(state,session) {
 						self.setYBinding($tw,session.awareness);
+						// Invoke the callback if present
+						if(callback) {
+							return callback(null,self.isLoggedIn,self.session.username,self.isReadOnly,self.isAnonymous);
+						}
+					});
+					self.session.once('disconnected',function(state,session) {
+						// Invalid session or connection rejected
+						$tw.rootWidget.dispatchEvent({
+							type: "tm-logout"
+						});
+						// if(callback) {
+						// 	return callback(null,self.isLoggedIn,self.session.username,self.isReadOnly,self.isAnonymous);
+						// }
 					});
 					// Error handler
 					self.session.once('error',function(event,session) {
@@ -174,12 +187,9 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 							type: "tm-logout"
 						});
 					});
-
 				}
-			}
-			// Invoke the callback if present
-			if(callback) {
-				callback(null,self.isLoggedIn,self.session.username,self.isReadOnly,self.isAnonymous);
+			} else if(callback) {
+				return callback(null,self.isLoggedIn,self.session.username,self.isReadOnly,self.isAnonymous);
 			}
 		}
 	});
@@ -206,19 +216,23 @@ Attempt to login and invoke the callback(err)
 */
 WebsocketAdaptor.prototype.login = function(username,password,callback) {
 	let options = {
-		url: this.host + "challenge/tw5-yjs-login",
+		url: this.host + "challenge/tw5-login",
 		type: "POST",
 		data: {
 			user: username,
-			password: password
+			password: password,
+			tiddlyweb_redirect: "/status" // workaround to marginalize automatic subsequent GET
 		},
 		callback: function(err) {
 			callback(err);
+		},
+		headers: {
+			"accept": "application/json",
+			"X-Requested-With": "TiddlyWiki"
 		}
 	};
 	this.logger.log("Logging in:",options);
 	$tw.utils.httpRequest(options);
-
 };
 
 /*
@@ -226,17 +240,22 @@ WebsocketAdaptor.prototype.login = function(username,password,callback) {
 WebsocketAdaptor.prototype.logout = function(callback) {
 	let self = this,
 		params = "?wiki=" + this.key + "&session=" + (window.sessionStorage.getItem("ws-session") || $tw.utils.uuid.NIL);
-	if(this.session) {
-		this.session.destroy();
-		this.session = null;
-	}
 	let options = {
 		url: this.host + "logout" + params,
 		type: "POST",
 		data: {},
 		callback: function(err,data) {
+			if(self.session) {
+				self.session.destroy();
+				self.session = null;
+			}
 			window.sessionStorage.setItem("ws-session", $tw.utils.uuid.NIL);
-			callback(err);
+			self.logger.log(err);
+			callback(null);
+		},
+		headers: {
+			"accept": "application/json",
+			"X-Requested-With": "TiddlyWiki"
 		}
 	};
 	this.logger.log("Logging out:",options);
@@ -248,6 +267,7 @@ Return null (updates from the Yjs binding are automatically stored in the wiki)
 */
 WebsocketAdaptor.prototype.getUpdatedTiddlers = function(syncer,callback) {
 	callback(null,null);
+	syncer.processTaskQueue();
 }
 
 /*

@@ -87,6 +87,7 @@ Return null (updates from the Yjs binding are automatically stored in the wiki)
 */
 WebsocketAdaptor.prototype.getUpdatedTiddlers = function(syncer,callback) {
 	callback(null,null);
+    syncer.processTaskQueue();
 }
 
 /*
