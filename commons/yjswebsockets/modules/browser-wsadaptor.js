@@ -13,7 +13,9 @@ A sync adaptor for syncing changes from/to a browser using Yjs websockets
 
 const WebsocketSession = require('./wssession.js').WebsocketSession,
 	Y = require('./yjs.cjs'),
+	CONFIG_API_TIDDLER = "$:/config/tiddlyweb/api",
 	CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host",
+	CONFIG_ORIGIN_TIDDLER = "$:/config/tiddlyweb/origin",
 	DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
 
 function WebsocketAdaptor(options) {
@@ -67,7 +69,10 @@ WebsocketAdaptor.prototype.setLoggerSaveBuffer = function(loggerForSaving) {
 };
 
 WebsocketAdaptor.prototype.setYBinding = function(state,awareness) {
-	$tw.utils.getYBinding(this.pathPrefix,state,awareness);
+	let binding = $tw.utils.getYBinding(this.pathPrefix,state,awareness);
+	if(binding.awareness !== awareness) {
+		binding.bindAwareness(awareness);
+	}
 }
 
 WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {
@@ -97,18 +102,15 @@ WebsocketAdaptor.prototype.getHost = function() {
 }
 
 WebsocketAdaptor.prototype.getPathPrefix = function() {
-	let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER);
-	text = text.replace(/\/$/,'').replace(/\$protocol\$\/\/\$host\$/,'');
+	let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER),
+		origin = this.wiki.getTiddlerText(CONFIG_ORIGIN_TIDDLER,DEFAULT_HOST_TIDDLER.replace(/\/$/, ''));
+	text = text.replace(/\/$/,'').replace(origin,'');
 	return text;
 }
 
 WebsocketAdaptor.prototype.getKey = function() {
-	let key = $tw.utils.uuid.NIL,
-		tiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER);
-	if(tiddler) {
-		key = $tw.utils.uuid.validate(tiddler.fields.key) && tiddler.fields.key;
-	}
-	return key;
+	let key = this.wiki.getTiddlerText(CONFIG_API_TIDDLER,$tw.utils.uuid.NIL);
+	return $tw.utils.uuid.validate(key) && key;
 }
 
 /*
@@ -148,6 +150,7 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 						id: json["session_id"],
 						key: self.key,
 						pathPrefix: self.pathPrefix,
+						authenticatedUsername: json.authenticatedUsername,
 						username: json.username,
 						isAnonymous: self.isAnonymous,
 						isLoggedIn: self.isLoggedIn,
@@ -287,10 +290,15 @@ WebsocketAdaptor.prototype.saveTiddler = function(tiddler,callback,options) {
 /*
 Load a tiddler and invoke the callback with (err,tiddlerFields)
 
-We don't need to implement loading for the ws adaptor, because all updates to the WikiDoc are automatically pushed to the wiki.
+We do need to implement loading for the ws adaptor, because readOnly users shouldn't be able to change the wikistate.
 */
 WebsocketAdaptor.prototype.loadTiddler = function(title,callback) {
-	callback(null,null);
+	$tw.ybindings.get(this.pathPrefix).load(title,function(err,fields){
+		if(err) {
+			callback(err);
+		}
+		callback(null,fields);
+	});
 };
 
 /*

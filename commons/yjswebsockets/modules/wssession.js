@@ -234,13 +234,13 @@ const setupWS = (session) => {
  * @param {WebsocketSession} session
  */
 const setupHeartbeat = (session) => {
-	/*  // Delay should be equal to the interval at which your server
-	    // sends out pings plus a conservative assumption of the latency (10s).  
-	    session.pingTimeout = setTimeout(function() {
-	      if(session.isReady()) {
-	        session.ws.close(4000, `['${session.ws.username}'] Session: ${session.id} closed by heartbeat, last message received ${new Date(session.lastMessageReceived*1000).toLocaleString()}`);
-	      }
-	    }, session.settings.heartbeat.timeout + session.settings.heartbeat.interval); */
+	// Delay should be equal to the interval at which your server
+	// sends out pings plus a conservative assumption of the latency (10s).  
+	session.pingTimeout = setTimeout(function() {
+		if(session.isReady()) {
+			session.ws.close(4000, `['${session.ws.username}'] Session: ${session.id} closed by heartbeat, last message received ${new Date(session.lastMessageReceived*1000).toLocaleString()}`);
+		}
+	}, session.settings.heartbeat.timeout + session.settings.heartbeat.interval);
 	// Send the next heartbeat ping after session.settings.heartbeat.interval ms
 	session.ping = setTimeout(function () {
 		// ping == 0, pong == 1
@@ -267,6 +267,7 @@ class WebsocketSession extends observable_js.Observable {
 	 * @param {URL} [options.url]
 	 * @param {'arraybuffer' | 'blob' | null} [opts.binaryType] Set `ws.binaryType`
 	 * @param {string} [options.ip] The current IP address for the ws connection
+	 * @param {string} [options.authenticatedUsername] The auth username, null for (anon)
 	 * @param {string} [options.username] The display username
 	 * @param {string} [options.access] The user-session's access level
 	 * @param {boolean} [options.isLoggedIn] The user's login state
@@ -281,6 +282,7 @@ class WebsocketSession extends observable_js.Observable {
 		this.id = options.id; // Required $tw.utils.uuid.v4()
 		this.key = options.key; // Required $tw.utils.uuid.v4()
 		this.pathPrefix = options.pathPrefix;
+		this.authenticatedUsername = options.authenticatedUsername;
 		this.username = options.username;
 		this.isAnonymous = options.isAnonymous;
 		this.isLoggedIn = options.isLoggedIn;
@@ -378,6 +380,7 @@ class WebsocketSession extends observable_js.Observable {
 			id: this.id,
 			key: this.key,
 			pathPrefix: this.pathPrefix,
+			authenticatedUsername: this.authenticatedUsername,
 			username: this.username,
 			isAnonymous: this.isAnonymous,
 			isLoggedIn: this.isLoggedIn,

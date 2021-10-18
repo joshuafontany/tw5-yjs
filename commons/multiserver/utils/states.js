@@ -19,12 +19,12 @@ const fs = require('fs'),
 $tw.states = $tw.states || new Map();
 
 // State methods
-function State(serveInfo, pathPrefix) {
+function State(origin,wikiPrefix,serveInfo) {
 	let self = this;
 	this.boot = {
 		files: [],
-		pathPrefix: pathPrefix,
-		regexp: new RegExp(`^(${pathPrefix})/?(.+)?$`),
+		pathPrefix: wikiPrefix,
+		regexp: new RegExp(`^(${wikiPrefix})/?(.+)?$`),
 		serveInfo: serveInfo,
 		wikiInfo: null,
 		wikiPath: path.resolve($tw.boot.wikiPath, serveInfo.path),
@@ -35,7 +35,8 @@ function State(serveInfo, pathPrefix) {
 	// Setup the config prefix path. For backwards compatibility we use $:/config/tiddlyweb/host
 	let newFields = {
 			title: CONFIG_HOST_TIDDLER,
-			text: `$protocol$//$host$${this.boot.pathPrefix}/`
+			text: `${$tw.boot.origin}${wikiPrefix}/`,
+			origin: $tw.boot.origin
 		},
 		tiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER);
 	this.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
@@ -276,8 +277,9 @@ State.prototype.loadWikiTiddlersNode = function (wikiPath, options) {
 };
 
 // Multi Wiki methods
-exports.loadSateRoot = function (pathPrefix) {
+exports.loadStateRoot = function (origin,pathPrefix) {
 	// Set the $tw state properties
+	$tw.boot.origin = origin || "$protocol$//$host$";
 	$tw.boot.pathPrefix = pathPrefix || "";
 	$tw.boot.regexp = null;
 	$tw.boot.serveInfo = {
@@ -288,7 +290,8 @@ exports.loadSateRoot = function (pathPrefix) {
 	let tiddler = $tw.wiki.getTiddler(CONFIG_HOST_TIDDLER),
 		newFields = {
 			title: CONFIG_HOST_TIDDLER,
-			text: `$protocol$//$host$${$tw.boot.pathPrefix}/`
+			text: `${$tw.boot.origin}${pathPrefix}/`,
+			origin: $tw.boot.origin
 		};
 	$tw.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
 }
@@ -296,7 +299,7 @@ exports.loadSateRoot = function (pathPrefix) {
 /*
 	This function loads a wiki into a named state object.
 */
-exports.loadStateWiki = function (serveInfo, serverPrefix, groupPrefix) {
+exports.loadStateWiki = function (origin,pathPrefix,groupPrefix,serveInfo) {
 	if(typeof serveInfo === "string") {
 		serveInfo = {
 			name: path.basename(serveInfo),
@@ -305,20 +308,20 @@ exports.loadStateWiki = function (serveInfo, serverPrefix, groupPrefix) {
 	}
 	let state = null,
 		finalPath = path.resolve($tw.boot.wikiPath, serveInfo.path),
-		pathPrefix = (serverPrefix ? `/${serverPrefix}/${groupPrefix}/` : `/${groupPrefix}/`) + encodeURIComponent(serveInfo.name),
-		loaded = $tw.utils.hasStateWiki(serveInfo.name);
+		wikiPrefix = (pathPrefix ? `/${pathPrefix}/${groupPrefix}/` : `/${groupPrefix}/`) + encodeURIComponent(serveInfo.name),
+		loaded = $tw.utils.hasStateWiki(wikiPrefix);
 	if(!$tw.utils.isDirectory(finalPath)) {
-		$tw.utils.warning("loadWikiState error, '" + pathPrefix + "': " + JSON.stringify(serveInfo, null, 2));
+		$tw.utils.warning("loadWikiState error, '" + wikiPrefix + "': " + JSON.stringify(serveInfo, null, 2));
 		serveInfo = null;
 	}
 	// Check for duplicates, we can't serve the same wiki at two different paths
 	if(finalPath == path.resolve($tw.boot.wikiPath, ".")) {
-		$tw.utils.warning("loadWikiState duplicate, '" + pathPrefix + "' has already been loaded as the server root wiki.");
+		$tw.utils.warning("loadWikiState duplicate, '" + wikiPrefix + "' has already been loaded as the server root wiki.");
 		loaded = true;
 	} else {
 		$tw.states.forEach(function (state,name) {
 			if(finalPath == path.resolve($tw.boot.wikiPath, state.boot.serveInfo.path)) {
-				$tw.utils.warning("loadWikiState duplicate, '" + pathPrefix + "' has already been loaded as '" + state.boot.pathPrefix + "'.");
+				$tw.utils.warning("loadWikiState duplicate, '" + wikiPrefix + "' has already been loaded as '" + state.boot.pathPrefix + "'.");
 				loaded = true;
 			}
 		});
@@ -326,9 +329,9 @@ exports.loadStateWiki = function (serveInfo, serverPrefix, groupPrefix) {
 	// Make sure it isn't loaded already
 	if(serveInfo && !loaded) {
 		// Init the tiddlywiki state instance
-		state = new State(serveInfo,pathPrefix);
+		state = new State(origin,wikiPrefix,serveInfo);
 		// Set the wiki as loaded
-		$tw.utils.setStateWiki(serveInfo.name,state);
+		$tw.utils.setStateWiki(wikiPrefix,state);
 		$tw.hooks.invokeHook('wiki-loaded',serveInfo.name);
 	}
 	return state;

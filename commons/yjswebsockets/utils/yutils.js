@@ -53,5 +53,5 @@ exports.getYBinding = function (pathPrefix,state,awareness) {
 		const binding = new TiddlywikiBinding(pathPrefix,state,awareness);
 		$tw.ybindings.set(pathPrefix,binding);
 		return binding;
-	})
+	});
 }

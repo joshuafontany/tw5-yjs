@@ -59,9 +59,18 @@ module-type: library
 
 		const twCursors = null //quill.getModule('cursors') || null
 		this.twCursors = twCursors
-		this.awareness = awareness
+		this._bindAwareness = (awareness) => {
+			this.awareness = awareness
+			if (this.awareness && twCursors) {
+				// init remote cursors
+				this.awareness.getStates().forEach((aw, clientId) => {
+					updateCursor(twCursors, aw, clientId, wikiDoc, wikiTiddlers)
+				})
+				this.awareness.on('change', this._awarenessChange)
+			}
+		}
 		this._awarenessChange = ({ added, removed, updated }) => {
-			const awarenessStates = /** @type {Awareness} */ (awareness).getStates()
+			const awarenessStates = /** @type {Awareness} */ (this.awareness).getStates()
 			added.forEach(id => {
 				//updateCursor(twCursors, awarenessStates.get(id), id, wikiDoc, wikiTiddlers)
 			})
@@ -109,7 +118,7 @@ module-type: library
 					});
 					changedTiddlers.forEach((target,title) => {
 						let username = transaction.origin.username || "binding";
-						$tw.utils.log(`['${username}'] Stored://root${this.wikiDoc.name}/#${title}`);
+						$tw.utils.log(`['${username}'] Stored ${$tw.boot.origin}${this.wikiDoc.name}/#${title}`);
 						this._storeTiddler(target);
 					});
 				}
@@ -122,7 +131,7 @@ module-type: library
 						$tw.utils.each(item.content.arr,(title) => {
 							// A tiddler was deleted
 							let username = transaction.origin.username || "binding";
-							$tw.utils.log(`['${username}'] Deleted://root${this.wikiDoc.name}/#${title}`);
+							$tw.utils.log(`['${username}'] Deleted ${$tw.boot.origin}${this.wikiDoc.name}/#${title}`);
 							state.wiki.deleteTiddler(title);
 						});						
 					});
@@ -133,84 +142,88 @@ module-type: library
 		this.wikiTombstones.observe(this._tombstonesObserver)
 		this._updateSelection = () => {
 			// always check selection
-			if (awareness && twCursors) {
+			if (this.awareness && twCursors) {
 				const sel = state.wiki.getSelection()
-				const aw = /** @type {any} */ (awareness.getLocalState())
+				const aw = /** @type {any} */ (this.awareness.getLocalState())
 				if (sel === null) {
-					if (awareness.getLocalState() !== null) {
-						awareness.setLocalStateField('cursor', /** @type {any} */ (null))
+					if (this.awareness.getLocalState() !== null) {
+						this.awareness.setLocalStateField('cursor', /** @type {any} */ (null))
 					}
 				} else {
 					const anchor = Y.createRelativePositionFromTypeIndex(wikiTiddlers, sel.index)
 					const head = Y.createRelativePositionFromTypeIndex(wikiTiddlers, sel.index + sel.length)
 					if (!aw || !aw.cursor || !Y.compareRelativePositions(anchor, aw.cursor.anchor) || !Y.compareRelativePositions(head, aw.cursor.head)) {
-						awareness.setLocalStateField('cursor', {
+						this.awareness.setLocalStateField('cursor', {
 							anchor,
 							head
 						})
 					}
 				}
 				// update all remote cursor locations
-				awareness.getStates().forEach((aw, clientId) => {
+				this.awareness.getStates().forEach((aw, clientId) => {
 					updateCursor(twCursors, aw, clientId, wikiDoc, wikiTiddlers)
 				})
 			}
 		}
 		this._save = (tiddler) => {
 			let title = tiddler.fields.title;
-			let tiddlerIndex = this.wikiTitles.toArray().indexOf(title);
-			let tsIndex = this.wikiTombstones.toArray().indexOf(title);
-			let changedFields = {}, deletedFields = [],
-				tiddlerFields = tiddler.getFieldStrings();
-			$tw.utils.each(tiddlerFields,(field,name) => {
-				if(tiddlerIndex == -1 || !this.wikiTiddlers.get(tiddlerIndex).has(name)) {
-					changedFields[name] = field;
-				} else {
-					let oldValue = this.wikiTiddlers.get(tiddlerIndex).get(name).toString();
-					if($tw.utils.hashString(oldValue) != $tw.utils.hashString(field) ){
+			if ($tw.browser && state.syncadaptor.isReadOnly) {
+				state.syncer.enqueueLoadTiddler(title); 
+			} else {
+				let tiddlerIndex = this.wikiTitles.toArray().indexOf(title);
+				let tsIndex = this.wikiTombstones.toArray().indexOf(title);
+				let changedFields = {}, deletedFields = [],
+					tiddlerFields = tiddler.getFieldStrings();
+				$tw.utils.each(tiddlerFields,(field,name) => {
+					if(tiddlerIndex == -1 || !this.wikiTiddlers.get(tiddlerIndex).has(name)) {
 						changedFields[name] = field;
+					} else {
+						let oldValue = this.wikiTiddlers.get(tiddlerIndex).get(name).toString();
+						if($tw.utils.hashString(oldValue) != $tw.utils.hashString(field) ){
+							changedFields[name] = field;
+						}
 					}
+				});
+				if(Object.keys(changedFields).length > 0) {
+					this.wikiDoc.transact(() => {
+						$tw.utils.log(`['binding'] Updating ${$tw.boot.origin}${this.wikiDoc.name}/#${title}`);
+						if(tiddlerIndex == -1){
+							this.wikiTiddlers.push([new Y.Map()]);
+							this.wikiTitles.push([title]);
+							tiddlerIndex = this.wikiTitles.toArray().indexOf(title);
+						}
+						if(tsIndex !== -1) {
+							this.wikiTombstones.delete(tsIndex,1)
+						}
+						let tiddlerMap = this.wikiTiddlers.get(tiddlerIndex);
+						tiddlerMap.forEach((value,key) => {
+							if(Object.keys(tiddler.fields).indexOf(key) == -1) {
+								tiddlerMap.delete(key);
+							}
+						})
+						let textFields = ["draft.title","list","tags","text"];
+						$tw.utils.each(changedFields,(field,name) => {
+							if(textFields.indexOf(name) != -1 || name.startsWith("text")) {
+								let yText = tiddlerMap.has(name)? tiddlerMap.get(name): new Y.Text();
+								let oldDelta = new Delta().insert(yText.toString()),
+									newDelta = new Delta().insert(field),
+									diff = oldDelta.diff(newDelta);
+								if(diff.ops.length > 0) {
+									yText.applyDelta(diff.ops);
+								}
+								if (!tiddlerMap.has(name)) {
+									tiddlerMap.set(name,yText);
+								}
+							} else {
+								tiddlerMap.set(name,field);
+							}
+						});
+					},this)
 				}
-			});
-			if(Object.keys(changedFields).length > 0) {
-				this.wikiDoc.transact(() => {
-					$tw.utils.log(`['binding'] Updating://root${this.wikiDoc.name}/#${title}`);
-					if(tiddlerIndex == -1){
-						this.wikiTiddlers.push([new Y.Map()]);
-						this.wikiTitles.push([title]);
-						tiddlerIndex = this.wikiTitles.toArray().indexOf(title);
-					}
-					if(tsIndex !== -1) {
-						this.wikiTombstones.delete(tsIndex,1)
-					}
-					let tiddlerMap = this.wikiTiddlers.get(tiddlerIndex);
-					tiddlerMap.forEach((value,key) => {
-						if(Object.keys(tiddler.fields).indexOf(key) == -1) {
-							tiddlerMap.delete(key);
-						}
-					})
-					let textFields = ["draft.title","list","tags","text"];
-					$tw.utils.each(changedFields,(field,name) => {
-						if(textFields.indexOf(name) != -1 || name.startsWith("text")) {
-							let yText = tiddlerMap.has(name)? tiddlerMap.get(name): new Y.Text();
-							let oldDelta = new Delta().insert(yText.toString()),
-								newDelta = new Delta().insert(field),
-								diff = oldDelta.diff(newDelta);
-							if(diff.ops.length > 0) {
-								yText.applyDelta(diff.ops);
-							}
-							if (!tiddlerMap.has(name)) {
-								tiddlerMap.set(name,yText);
-							}
-						} else {
-							tiddlerMap.set(name,field);
-						}
-					});
-				},this)
 			}
 		}
 		this._load = (title) => {
-			$tw.utils.log(`['binding'] Loading://root${this.wikiDoc.name}/#${title}`);
+			$tw.utils.log(`['binding'] Loading ${$tw.boot.origin}${this.wikiDoc.name}/#${title}`);
 			let fields = {};
 			let tiddlerIndex = this.wikiTitles.toArray().indexOf(title)
 			let tsIndex = this.wikiTombstones.toArray().indexOf(title)
@@ -222,19 +235,23 @@ module-type: library
 			return fields;
 		}
 		this._delete = (title) => {
-			let tiddlerIndex = this.wikiTitles.toArray().indexOf(title)
-			let tsIndex = this.wikiTombstones.toArray().indexOf(title)
-			if (tiddlerIndex !== -1 || tsIndex == -1) {
-				this.wikiDoc.transact(() => {
-					$tw.utils.log(`['binding'] Deleting://root${this.wikiDoc.name}/#${title}`);
-					if(tiddlerIndex !== -1 ) {
-						this.wikiTitles.delete(tiddlerIndex,1)
-						this.wikiTiddlers.delete(tiddlerIndex,1)
-					}
-					if(tsIndex == -1) {
-						this.wikiTombstones.push([title])
-					}
-				},this);
+			if ($tw.browser && state.syncadaptor.isReadOnly) {
+				state.syncer.enqueueLoadTiddler(title); 
+			} else {
+				let tiddlerIndex = this.wikiTitles.toArray().indexOf(title)
+				let tsIndex = this.wikiTombstones.toArray().indexOf(title)
+				if (tiddlerIndex !== -1 || tsIndex == -1) {
+					this.wikiDoc.transact(() => {
+						$tw.utils.log(`['binding'] Deleting ${$tw.boot.origin}${this.wikiDoc.name}/#${title}`);
+						if(tiddlerIndex !== -1 ) {
+							this.wikiTitles.delete(tiddlerIndex,1)
+							this.wikiTiddlers.delete(tiddlerIndex,1)
+						}
+						if(tsIndex == -1) {
+							this.wikiTombstones.push([title])
+						}
+					},this);
+				}
 			}
 		}
 		if($tw.node) {
@@ -246,27 +263,27 @@ module-type: library
 						maps = this.wikiTitles.toArray(),
 						diff = maps.filter(x => titles.indexOf(x) === -1);
 					diff.forEach((title) => {
-						$tw.utils.log(`['binding'] Startup, deleting://root${this.wikiDoc.name}/#${title}`);
+						$tw.utils.log(`['binding'] Startup, deleting ${$tw.boot.origin}${this.wikiDoc.name}/#${title}`);
 						this._delete(title);
 					});
 					// Update the tiddlers that changed during server restart
 					$tw.utils.each(titles,(title) => {
 						var tiddler = state.wiki.getTiddler(title);
 						if(tiddler) {
-							$tw.utils.log(`['binding'] Startup, testing://root${this.wikiDoc.name}/#${title}`);
+							$tw.utils.log(`['binding'] Startup, testing ${$tw.boot.origin}${this.wikiDoc.name}/#${title}`);
 							this._save(tiddler)
 						}
 					});
 				},this);
 			})
-		} else if (awareness && twCursors) {
-			// init remote cursors
-			awareness.getStates().forEach((aw, clientId) => {
-				updateCursor(twCursors, aw, clientId, wikiDoc, wikiTiddlers)
-			})
-			awareness.on('change', this._awarenessChange)
+		} else {
+			this._bindAwareness(awareness)
 		}
 	}
+	bindAwareness (awareness) {
+		this.awareness.destroy()
+		this._bindAwareness(awareness)
+	} 
 	save (tiddler,callback) {
 		try {
 			this._save(tiddler)
@@ -277,12 +294,13 @@ module-type: library
 		return callback(null)
 	}
 	load (title,callback) {
+		let fields = null
 		try{
-			this._load(title)
+			fields = this._load(title)
 		} catch (error) {
 			return callback(error)
 		}
-		return callback(null)
+		return callback(null,fields)
 	}
 	delete (title,callback) {
 		try{

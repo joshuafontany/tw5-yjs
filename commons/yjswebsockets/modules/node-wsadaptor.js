@@ -16,6 +16,7 @@ const fs = $tw.node ? require("fs") : null,
 	path = $tw.node ? require("path") : null,
     FileSystemAdaptor = require("$:/plugins/tiddlywiki/filesystem/filesystemadaptor.js").adaptorClass,
 	CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host",
+	CONFIG_ORIGIN_TIDDLER = "$:/config/tiddlyweb/origin",
 	DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
 
 function WebsocketAdaptor(options) {
@@ -85,10 +86,10 @@ WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {
 /*
 Return null (updates from the Yjs binding are automatically stored in the wiki)
 */
-WebsocketAdaptor.prototype.getUpdatedTiddlers = function(syncer,callback) {
+/* WebsocketAdaptor.prototype.getUpdatedTiddlers = function(syncer,callback) {
 	callback(null,null);
     syncer.processTaskQueue();
-}
+} */
 
 /*
 Save a tiddler and invoke the callback with (err,adaptorInfo,revision)
@@ -108,9 +109,15 @@ Load a tiddler and invoke the callback with (err,tiddlerFields)
 
 We don't need to implement loading for the file system adaptor, because all the tiddler files 
 will have been loaded during the boot process, and all updates to thw WikiDoc are pushed to the wiki.
+But we still need to support syncer.enqueueLoadTiddler().
 */
 WebsocketAdaptor.prototype.loadTiddler = function(title,callback) {
-	callback(null,null);
+    $tw.ybindings.get(this.pathPrefix).load(title,function(err,fields){
+		if(err) {
+			callback(err);
+		}
+		callback(null,fields);
+	});
 };
 
 /*

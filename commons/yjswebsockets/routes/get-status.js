@@ -29,6 +29,7 @@ Returns server status information
 					id: state.queryParameters["session"],
 					key: state.queryParameters["wiki"],
 					pathPrefix: state.boot.pathPrefix,
+					authenticatedUsername: state.authenticatedUsername,
 					username: state.authenticatedUsername || $tw.wsServer.getAnonUsername(state),
 					isAnonymous: !state.authenticatedUsername,
 					isLoggedIn: !!state.authenticatedUsername,

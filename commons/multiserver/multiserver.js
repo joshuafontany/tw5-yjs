@@ -31,19 +31,48 @@ if($tw.node) {
 		settings = $tw.utils.extend(options.wiki.getTiddlerData("$:/config/commons/multiserver", {}), settings);
 		options.variables = $tw.utils.extend(settings, options.variables);
 		Server.call(this, options);
+		// Setup the public facing hostname
+		this.hostname = options.hostname || this.host;
 		// Initialise admin authorization principles
 		var authorizedUserName = (this.get("username") && this.get("password")) ? this.get("username") : null;
 		this.authorizationPrincipals["admin"] = (this.get("admin") || authorizedUserName).split(',').map($tw.utils.trim);
-		// Setup the root route
-		$tw.utils.loadSateRoot(this.get("path-prefix") || "");
 		// Add all the routes, this also loads and adds authorization priciples for each wiki
-		this.addWikiRoutes($tw.boot.pathPrefix);
+		this.addWikiRoutes();
 	}
 
 	MultiServer.prototype = Object.create(Server.prototype);
 	MultiServer.prototype.constructor = MultiServer;
 
 	MultiServer.prototype.defaultVariables = Server.prototype.defaultVariables;
+
+	/*
+	  Load each wiki. Log each wiki's authorizationPrincipals as `${state.boot.pathPrefix}/readers` & `${state.boot.pathPrefix}/writers`.
+	*/
+	MultiServer.prototype.addWikiRoutes = function () {
+		let server = this,
+			readers = this.authorizationPrincipals["readers"],
+			writers = this.authorizationPrincipals["writers"];
+		// Setup the root route
+		$tw.utils.loadStateRoot(this.get("origin") || "",this.get("path-prefix") || "");
+		// Setup the other routes
+		$tw.utils.each($tw.boot.wikiInfo.serveWikis, function (group,groupPrefix) {
+			$tw.utils.each(group, function (serveInfo) {
+				let state = $tw.utils.loadStateWiki(server.get("origin") || "",server.get("path-prefix") || "",groupPrefix,serveInfo);
+				if(state) {
+					// Add the authorized principal overrides
+					if(!!serveInfo.readers) {
+						readers = serveInfo.readers.split(',').map($tw.utils.trim);
+					}
+					if(!!serveInfo.writers) {
+						writers = serveInfo.writers.split(',').map($tw.utils.trim);
+					}
+					server.authorizationPrincipals[`${state.boot.pathPrefix}/readers`] = readers;
+					server.authorizationPrincipals[`${state.boot.pathPrefix}/writers`] = writers;
+					$tw.utils.log("Added route " + state.boot.pathPrefix);
+				};
+			});
+		});
+	};
 
 	MultiServer.prototype.isAdmin = function (username) {
 		if(!!username) {
@@ -71,10 +100,11 @@ if($tw.node) {
 		options = options || {};
 		// Test for OPTIONS
 		if(request.method === 'OPTIONS') {
-			response.writeHead(200, {
+			response.writeHead(204, {
 				"Access-Control-Allow-Origin": "*",
 				"Access-Control-Allow-Headers": "*",
-				"Access-Control-Allow-Methods": "POST, GET, PUT, DELETE"
+				"Access-Control-Allow-Methods": "OPTIONS, HEAD, POST, GET, PUT, DELETE",
+				'Access-Control-Max-Age': 2592000 //30 Days
 			})
 			response.end()
 			return
@@ -101,33 +131,6 @@ if($tw.node) {
 			options.authorizationType = potentialMatch.boot.pathPrefix + "/" + (this.methodMappings[request.method] || "readers");
 		}
 		return options;
-	};
-
-	/*
-	  Load each wiki. Log each wiki's authorizationPrincipals as `${state.boot.pathPrefix}/readers` & `${state.boot.pathPrefix}/writers`.
-	*/
-	MultiServer.prototype.addWikiRoutes = function (pathPrefix) {
-		let self = this,
-			readers = this.authorizationPrincipals["readers"],
-			writers = this.authorizationPrincipals["writers"];
-		// Setup the other routes
-		$tw.utils.each($tw.boot.wikiInfo.serveWikis, function (group, groupPrefix) {
-			$tw.utils.each(group, function (serveInfo) {
-				let state = $tw.utils.loadStateWiki(serveInfo, pathPrefix, groupPrefix);
-				if(state) {
-					// Add the authorized principal overrides
-					if(!!serveInfo.readers) {
-						readers = serveInfo.readers.split(',').map($tw.utils.trim);
-					}
-					if(!!serveInfo.writers) {
-						writers = serveInfo.writers.split(',').map($tw.utils.trim);
-					}
-					self.authorizationPrincipals[`${state.boot.pathPrefix}/readers`] = readers;
-					self.authorizationPrincipals[`${state.boot.pathPrefix}/writers`] = writers;
-					$tw.utils.log("Added route " + state.boot.pathPrefix);
-				};
-			});
-		});
 	};
 
 	exports.MultiServer = MultiServer;

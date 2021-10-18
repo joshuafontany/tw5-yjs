@@ -16,7 +16,7 @@ if($tw.node) {
 	const WS = require('./external/ws/ws.js');
 	const WebsocketSession = require('./wssession.js').WebsocketSession;
 	const Y = require('./yjs.cjs');
-	const CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host";
+	const CONFIG_API_TIDDLER = "$:/config/tiddlyweb/api";
 
 /*
 	A simple websocket server extending the `ws` library
@@ -36,20 +36,20 @@ function WebSocketServer(options) {
 	this.on('close',this.serverClosed);
 	this.on('connection',this.handleWSConnection);
 	// Add an api key to all wikis
-	let tiddler = $tw.wiki.getTiddler(CONFIG_HOST_TIDDLER),
+	let tiddler = $tw.wiki.getTiddler(CONFIG_API_TIDDLER),
 		newFields = {
-			title: CONFIG_HOST_TIDDLER,
-			key: tiddler && $tw.utils.uuid.validate(tiddler.fields.key) ? tiddler.fields.key : $tw.utils.uuid.v4()
+			title: CONFIG_API_TIDDLER,
+			text: tiddler && $tw.utils.uuid.validate(tiddler.fields.text) ? tiddler.fields.text : $tw.utils.uuid.v4()
 		};
 	$tw.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
 	// Set the binding
 	$tw.syncadaptor.setYBinding($tw);
 	$tw.states.forEach(function(state,pathPrefix) {
 		// Setup the config api key.
-		let tiddler = state.wiki.getTiddler(CONFIG_HOST_TIDDLER),
+		let tiddler = state.wiki.getTiddler(CONFIG_API_TIDDLER),
 			newFields = {
-				title: CONFIG_HOST_TIDDLER,
-				key: tiddler && $tw.utils.uuid.validate(tiddler.fields.key) ? tiddler.fields.key : $tw.utils.uuid.v4()
+				title: CONFIG_API_TIDDLER,
+				text: tiddler && $tw.utils.uuid.validate(tiddler.fields.text) ? tiddler.fields.text : $tw.utils.uuid.v4()
 			};
 		state.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
 		// Set the binding
@@ -106,12 +106,11 @@ WebSocketServer.prototype.verifyUpgrade = function(request,options) {
 	}
 	let session = this.getSession(state.urlInfo.searchParams.get("session")),
 		requestKey = state.urlInfo.searchParams.get("wiki"),
-		configTiddler = state.wiki.getTiddler(CONFIG_HOST_TIDDLER),
-		apiKey = configTiddler? configTiddler.fields.key: $tw.utils.uuid.NIL;
+		apiKey = state.wiki.getTiddlerText(CONFIG_API_TIDDLER,$tw.utils.uuid.NIL);
 	return !!session
 		&& (requestKey, apiKey) == (apiKey, session.key)
 		&& state.boot.pathPrefix == session.pathPrefix
-		&& state.authenticatedUsername == session.username
+		&& state.authenticatedUsername == session.authenticatedUsername
 		&& state
 };
 
