@@ -71,9 +71,10 @@ WebsocketAdaptor.prototype.isReady = function() {
 };
 
 WebsocketAdaptor.prototype.getPathPrefix = function() {
-	let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER);
-	text = text.replace(/\/$/,'').replace(this.boot.origin,'');
-	return text;
+	let hostTiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER),
+		host = hostTiddler? hostTiddler.fields.text: DEFAULT_HOST_TIDDLER,
+		origin = hostTiddler? hostTiddler.fields.origin: DEFAULT_HOST_TIDDLER.replace(/\/$/, '');
+	return host.replace(/\/$/,'').replace(origin,'');
 }
 
 WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {

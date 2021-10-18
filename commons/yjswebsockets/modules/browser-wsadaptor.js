@@ -102,8 +102,7 @@ WebsocketAdaptor.prototype.getPathPrefix = function() {
 	let hostTiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER),
 		host = hostTiddler? hostTiddler.fields.text: DEFAULT_HOST_TIDDLER,
 		origin = hostTiddler? hostTiddler.fields.origin: DEFAULT_HOST_TIDDLER.replace(/\/$/, '');
-	text = host.replace(/\/$/,'').replace(origin,'');
-	return text;
+	return host.replace(/\/$/,'').replace(origin,'');
 }
 
 WebsocketAdaptor.prototype.getKey = function() {
@@ -127,7 +126,7 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 				return callback(err);
 			}
 			// Decode the status JSON
-			let username, json = null;
+			let username = self.wiki.getTiddlerText($tw.syncer.titleUserName,null), json = null;
 			try {
 				json = JSON.parse(data);
 			} catch (e) {
@@ -139,18 +138,18 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 				self.isReadOnly = !!json["read_only"];
 				self.isAnonymous = !!json.anonymous;
 
-				if(self.session && json["session_id"] && self.session.id == json["session_id"]) {
+				if(self.session && json.session && self.session.id == json.session) {
 					this.isReady() && self.session.connect();
 					// Invoke the callback if present
 					if(callback) {
 						return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
 					}
-				} else if(json["session_id"]) {
+				} else if(json.session) {
 					// Destroy the old session
 					self.session && self.session.destroy();
 					// Setup the session
 					let options = {
-						id: json["session_id"],
+						id: json.session,
 						key: self.key,
 						pathPrefix: self.pathPrefix,
 						authenticatedUsername: json.authenticatedUsername,
@@ -165,7 +164,7 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 						url: new URL(self.host)
 					}
 					options.url.searchParams.append("wiki", self.key);
-					options.url.searchParams.append("session", json["session_id"]);
+					options.url.searchParams.append("session", json.session);
 					self.session = new WebsocketSession(options);
 					// Set the session id
 					window.sessionStorage.setItem("ws-session", self.session.id)
@@ -193,6 +192,9 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 				} else if(callback) {
 					return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
 				}
+			} else if(callback) {
+				// Invoke the callback if present
+				return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
 			}
 		}
 	});

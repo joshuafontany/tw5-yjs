@@ -238,7 +238,8 @@ const setupHeartbeat = (session) => {
 	// sends out pings plus a conservative assumption of the latency (10s).  
 	session.pingTimeout = setTimeout(function() {
 		if(session.isReady()) {
-			session.ws.close(4000, `['${session.ws.username}'] Session: ${session.id} closed by heartbeat, last message received ${new Date(session.lastMessageReceived*1000).toLocaleString()}`);
+			session.ws.close(4000, `['${session.ws.username}'] Heartbeat Timeout`);
+			$tw.utils.log(`['${session.ws.username}'] Session closed by heartbeat, last message received ${new Date(session.lastMessageReceived*1000).toLocaleString()}`);
 		}
 	}, session.settings.heartbeat.timeout + session.settings.heartbeat.interval);
 	// Send the next heartbeat ping after session.settings.heartbeat.interval ms

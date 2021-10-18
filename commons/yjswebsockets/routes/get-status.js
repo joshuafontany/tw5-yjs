@@ -51,7 +51,7 @@ Returns server status information
 				anonymous: session.isAnonymous,
 				read_only: session.isReadOnly,
 				tiddlywiki_version: $tw.version,
-				session_id: session.id,
+				session: session.id,
 				session_expires: session.expires,
 				ip: session.ip
 			}

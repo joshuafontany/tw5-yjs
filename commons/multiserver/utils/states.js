@@ -278,29 +278,10 @@ State.prototype.loadWikiTiddlersNode = function (wikiPath, options) {
 };
 
 // Multi Wiki methods
-exports.loadStateRoot = function (origin,pathPrefix) {
-	// Set the $tw state properties
-	$tw.boot.origin = origin || "$protocol$//$host$";
-	$tw.boot.pathPrefix = pathPrefix || "";
-	$tw.boot.regexp = null;
-	$tw.boot.serveInfo = {
-		name: pathPrefix,
-		path: pathPrefix || "./"
-	};
-	// Setup the config prefix path. For backwards compatibility we use $:/config/tiddlyweb/host
-	let tiddler = $tw.wiki.getTiddler(CONFIG_HOST_TIDDLER),
-		newFields = {
-			title: CONFIG_HOST_TIDDLER,
-			text: `${$tw.boot.origin}${pathPrefix}/`,
-			origin: $tw.boot.origin
-		};
-	$tw.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
-}
-
 /*
 	This function loads a wiki into a named state object.
 */
-exports.loadStateWiki = function (pathPrefix,groupPrefix,serveInfo) {
+exports.loadStateWiki = function (groupPrefix,serveInfo) {
 	if(typeof serveInfo === "string") {
 		serveInfo = {
 			name: path.basename(serveInfo),
@@ -309,7 +290,7 @@ exports.loadStateWiki = function (pathPrefix,groupPrefix,serveInfo) {
 	}
 	let state = null,
 		finalPath = path.resolve($tw.boot.wikiPath, serveInfo.path),
-		wikiPrefix = (pathPrefix ? `/${pathPrefix}/${groupPrefix}/` : `/${groupPrefix}/`) + encodeURIComponent(serveInfo.name),
+		wikiPrefix = ($tw.boot.pathPrefix ? `/${$tw.boot.pathPrefix}/${groupPrefix}/` : `/${groupPrefix}/`) + encodeURIComponent(serveInfo.name),
 		loaded = $tw.utils.hasStateWiki(wikiPrefix);
 	if(!$tw.utils.isDirectory(finalPath)) {
 		$tw.utils.warning("loadWikiState error, '" + wikiPrefix + "': " + JSON.stringify(serveInfo, null, 2));
@@ -331,7 +312,6 @@ exports.loadStateWiki = function (pathPrefix,groupPrefix,serveInfo) {
 	if(serveInfo && !loaded) {
 		// Init the tiddlywiki state instance
 		state = new State(wikiPrefix,serveInfo);
-		// Set the wiki as loaded
 		$tw.utils.setStateWiki(wikiPrefix,state);
 		$tw.hooks.invokeHook('wiki-loaded',serveInfo.name);
 	}

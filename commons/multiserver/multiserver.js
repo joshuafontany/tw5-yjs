@@ -20,19 +20,10 @@ if($tw.node) {
 	  options: 
 	*/
 	function MultiServer(options) {
-		// Initialise the server settings
-		let settings;
-		try {
-			settings = JSON.parse(fs.readFileSync(path.join($tw.boot.wikiPath, "settings", "settings.json")));
-		} catch (err) {
-			$tw.utils.log("Server Settings Error - using default values.");
-			settings = {};
-		}
-		settings = $tw.utils.extend(options.wiki.getTiddlerData("$:/config/commons/multiserver", {}), settings);
-		options.variables = $tw.utils.extend(settings, options.variables);
+		options.variables = $tw.utils.extend($tw.boot.settings,options.variables);
 		Server.call(this, options);
 		// Setup the public facing hostname
-		this.hostname = options.hostname || this.host;
+		this.origin = this.get("origin") || this.host;
 		// Initialise admin authorization principles
 		var authorizedUserName = (this.get("username") && this.get("password")) ? this.get("username") : null;
 		this.authorizationPrincipals["admin"] = (this.get("admin") || authorizedUserName).split(',').map($tw.utils.trim);
@@ -52,12 +43,10 @@ if($tw.node) {
 		let server = this,
 			readers = this.authorizationPrincipals["readers"],
 			writers = this.authorizationPrincipals["writers"];
-		// Setup the root route
-		$tw.utils.loadStateRoot(this.get("origin") || "",this.get("path-prefix") || "");
-		// Setup the other routes
+		// Setup the other wiki routes
 		$tw.utils.each($tw.boot.wikiInfo.serveWikis, function (group,groupPrefix) {
 			$tw.utils.each(group, function (serveInfo) {
-				let state = $tw.utils.loadStateWiki(server.get("origin") || "",server.get("path-prefix") || "",groupPrefix,serveInfo);
+				let state = $tw.utils.loadStateWiki(groupPrefix,serveInfo);
 				if(state) {
 					// Add the authorized principal overrides
 					if(!!serveInfo.readers) {
