@@ -12,11 +12,8 @@ A sync adaptor module for synchronising Yjs websockets with the local filesystem
 "use strict";
 
 // Get a reference to the file system
-const fs = $tw.node ? require("fs") : null,
-	path = $tw.node ? require("path") : null,
-    FileSystemAdaptor = require("$:/plugins/tiddlywiki/filesystem/filesystemadaptor.js").adaptorClass,
+const FileSystemAdaptor = require("$:/plugins/tiddlywiki/filesystem/filesystemadaptor.js").adaptorClass,
 	CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host",
-	CONFIG_ORIGIN_TIDDLER = "$:/config/tiddlyweb/origin",
 	DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
 
 function WebsocketAdaptor(options) {
@@ -75,7 +72,7 @@ WebsocketAdaptor.prototype.isReady = function() {
 
 WebsocketAdaptor.prototype.getPathPrefix = function() {
 	let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER);
-	text = text.replace(/\/$/,'').replace(/\$protocol\$\/\/\$host\$/,'');
+	text = text.replace(/\/$/,'').replace(this.boot.origin,'');
 	return text;
 }
 

@@ -15,13 +15,12 @@ const WebsocketSession = require('./wssession.js').WebsocketSession,
 	Y = require('./yjs.cjs'),
 	CONFIG_API_TIDDLER = "$:/config/tiddlyweb/api",
 	CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host",
-	CONFIG_ORIGIN_TIDDLER = "$:/config/tiddlyweb/origin",
 	DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
 
 function WebsocketAdaptor(options) {
 	this.wiki = options.wiki;
-	this.pathPrefix = this.getPathPrefix();
 	this.host = this.getHost();
+	this.pathPrefix = this.getPathPrefix();
 	this.key = this.getKey();
 	this.logger = new $tw.utils.Logger("wsadaptor");
 	// disable gc when using snapshots!
@@ -79,9 +78,7 @@ WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {
 	/* 
 		Return the vector clock of the tiddler?
 	*/
-	return {
-
-	};
+	return {};
 }
 
 WebsocketAdaptor.prototype.isReady = function() {
@@ -102,9 +99,10 @@ WebsocketAdaptor.prototype.getHost = function() {
 }
 
 WebsocketAdaptor.prototype.getPathPrefix = function() {
-	let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER),
-		origin = this.wiki.getTiddlerText(CONFIG_ORIGIN_TIDDLER,DEFAULT_HOST_TIDDLER.replace(/\/$/, ''));
-	text = text.replace(/\/$/,'').replace(origin,'');
+	let hostTiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER),
+		host = hostTiddler? hostTiddler.fields.text: DEFAULT_HOST_TIDDLER,
+		origin = hostTiddler? hostTiddler.fields.origin: DEFAULT_HOST_TIDDLER.replace(/\/$/, '');
+	text = host.replace(/\/$/,'').replace(origin,'');
 	return text;
 }
 
@@ -129,19 +127,24 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 				return callback(err);
 			}
 			// Decode the status JSON
-			let json = null;
+			let username, json = null;
 			try {
 				json = JSON.parse(data);
 			} catch (e) {
 			}
 			if(json) {
 				// Check if we're logged in
+				username = json.username;
 				self.isLoggedIn = !!json.username;
 				self.isReadOnly = !!json["read_only"];
 				self.isAnonymous = !!json.anonymous;
 
 				if(self.session && json["session_id"] && self.session.id == json["session_id"]) {
-					self.session.connect()
+					this.isReady() && self.session.connect();
+					// Invoke the callback if present
+					if(callback) {
+						return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
+					}
 				} else if(json["session_id"]) {
 					// Destroy the old session
 					self.session && self.session.destroy();
@@ -171,7 +174,7 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 						self.setYBinding($tw,session.awareness);
 						// Invoke the callback if present
 						if(callback) {
-							return callback(null,self.isLoggedIn,self.session.username,self.isReadOnly,self.isAnonymous);
+							return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
 						}
 					});
 					self.session.once('disconnected',function(state,session) {
@@ -179,9 +182,6 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 						$tw.rootWidget.dispatchEvent({
 							type: "tm-logout"
 						});
-						// if(callback) {
-						// 	return callback(null,self.isLoggedIn,self.session.username,self.isReadOnly,self.isAnonymous);
-						// }
 					});
 					// Error handler
 					self.session.once('error',function(event,session) {
@@ -190,9 +190,9 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 							type: "tm-logout"
 						});
 					});
+				} else if(callback) {
+					return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
 				}
-			} else if(callback) {
-				return callback(null,self.isLoggedIn,self.session.username,self.isReadOnly,self.isAnonymous);
 			}
 		}
 	});
@@ -245,7 +245,7 @@ WebsocketAdaptor.prototype.logout = function(callback) {
 		params = "?wiki=" + this.key + "&session=" + (window.sessionStorage.getItem("ws-session") || $tw.utils.uuid.NIL);
 	let options = {
 		url: this.host + "logout" + params,
-		type: "POST",
+		type: "GET",
 		data: {},
 		callback: function(err,data) {
 			if(self.session) {
@@ -253,7 +253,9 @@ WebsocketAdaptor.prototype.logout = function(callback) {
 				self.session = null;
 			}
 			window.sessionStorage.setItem("ws-session", $tw.utils.uuid.NIL);
-			self.logger.log(err);
+			if(err) {
+				self.logger.log(err);
+			}
 			callback(null);
 		},
 		headers: {

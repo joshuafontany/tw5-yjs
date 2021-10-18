@@ -19,10 +19,11 @@ const fs = require('fs'),
 $tw.states = $tw.states || new Map();
 
 // State methods
-function State(origin,wikiPrefix,serveInfo) {
+function State(wikiPrefix,serveInfo) {
 	let self = this;
 	this.boot = {
 		files: [],
+		origin: $tw.boot.origin,
 		pathPrefix: wikiPrefix,
 		regexp: new RegExp(`^(${wikiPrefix})/?(.+)?$`),
 		serveInfo: serveInfo,
@@ -299,7 +300,7 @@ exports.loadStateRoot = function (origin,pathPrefix) {
 /*
 	This function loads a wiki into a named state object.
 */
-exports.loadStateWiki = function (origin,pathPrefix,groupPrefix,serveInfo) {
+exports.loadStateWiki = function (pathPrefix,groupPrefix,serveInfo) {
 	if(typeof serveInfo === "string") {
 		serveInfo = {
 			name: path.basename(serveInfo),
@@ -329,7 +330,7 @@ exports.loadStateWiki = function (origin,pathPrefix,groupPrefix,serveInfo) {
 	// Make sure it isn't loaded already
 	if(serveInfo && !loaded) {
 		// Init the tiddlywiki state instance
-		state = new State(origin,wikiPrefix,serveInfo);
+		state = new State(wikiPrefix,serveInfo);
 		// Set the wiki as loaded
 		$tw.utils.setStateWiki(wikiPrefix,state);
 		$tw.hooks.invokeHook('wiki-loaded',serveInfo.name);
