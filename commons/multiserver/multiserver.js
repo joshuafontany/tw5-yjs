@@ -13,7 +13,8 @@ module-type: library
 if($tw.node) {
 	const fs = require("fs"),
 		path = require("path"),
-		Server = require("$:/core/modules/server/server.js").Server;
+		Server = require("$:/core/modules/server/server.js").Server,
+		CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host";
 
 	/*
 	  A simple node server for Yjs, extended from the core server module
@@ -22,11 +23,11 @@ if($tw.node) {
 	function MultiServer(options) {
 		options.variables = $tw.utils.extend($tw.boot.settings,options.variables);
 		Server.call(this, options);
-		// Setup the public facing hostname
-		this.origin = this.get("origin") || this.host;
 		// Initialise admin authorization principles
 		var authorizedUserName = (this.get("username") && this.get("password")) ? this.get("username") : null;
 		this.authorizationPrincipals["admin"] = (this.get("admin") || authorizedUserName).split(',').map($tw.utils.trim);
+		// Save the CONFIG_HOST_TIDDLER to disk
+		$tw.wiki.addTiddler($tw.wiki.getTiddler(CONFIG_HOST_TIDDLER));
 		// Add all the routes, this also loads and adds authorization priciples for each wiki
 		this.addWikiRoutes();
 	}
@@ -48,6 +49,8 @@ if($tw.node) {
 			$tw.utils.each(group, function (serveInfo) {
 				let state = $tw.utils.loadStateWiki(groupPrefix,serveInfo);
 				if(state) {
+					// Save the CONFIG_HOST_TIDDLER to disk
+					state.wiki.addTiddler(state.wiki.getTiddler(CONFIG_HOST_TIDDLER));
 					// Add the authorized principal overrides
 					if(!!serveInfo.readers) {
 						readers = serveInfo.readers.split(',').map($tw.utils.trim);
@@ -70,7 +73,6 @@ if($tw.node) {
 			return null;
 		}
 	}
-
 
 	MultiServer.prototype.getUserAccess = function (username, pathPrefix) {
 		pathPrefix = pathPrefix || '';

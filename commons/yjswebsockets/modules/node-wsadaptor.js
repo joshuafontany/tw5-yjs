@@ -21,11 +21,12 @@ function WebsocketAdaptor(options) {
 	this.boot = options.boot || $tw.boot;
 	this.pathPrefix = this.getPathPrefix();
 	this.logger = new $tw.utils.Logger("wsadaptor",{colour: "blue"});
-    // disable gc when using snapshots!
-	this.gcEnabled = this.wiki.getTiddlerText("$:/config/yjs/gcEnabled","yes") == "yes";
 
 	// Attach a core filesystemadaptor to this syncadaptor
     this.fsadaptor = new FileSystemAdaptor(options);
+
+    // disable gc when using snapshots!
+	this.gcEnabled = this.wiki.getTiddlerText("$:/config/yjs/gcEnabled","yes") == "yes";
 
     /**
 	 * @type {{bindState: function(string,WikiDoc):void, writeState:function(string,WikiDoc):Promise<any>, provider: any}|null}
@@ -69,6 +70,19 @@ WebsocketAdaptor.prototype.setYBinding = function(state,awareness) {
 WebsocketAdaptor.prototype.isReady = function() {
 	return $tw.ydocs.has(this.pathPrefix) && $tw.ybindings.has(this.pathPrefix);
 };
+
+WebsocketAdaptor.prototype.getHost = function() {
+	let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER),
+		substitutions = [
+			{name: "protocol", value: document.location.protocol},
+			{name: "host", value: document.location.host}
+		];
+	for(let t=0; t<substitutions.length; t++) {
+		let s = substitutions[t];
+		text = $tw.utils.replaceString(text,new RegExp("\\$" + s.name + "\\$","mg"),s.value);
+	}
+	return text;
+}
 
 WebsocketAdaptor.prototype.getPathPrefix = function() {
 	let hostTiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER),

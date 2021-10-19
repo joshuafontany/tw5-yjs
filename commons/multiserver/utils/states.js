@@ -33,15 +33,6 @@ function State(wikiPrefix,serveInfo) {
 	};
 	this.wiki = new $tw.Wiki();
 
-	// Setup the config prefix path. For backwards compatibility we use $:/config/tiddlyweb/host
-	let newFields = {
-			title: CONFIG_HOST_TIDDLER,
-			text: `${$tw.boot.origin}${wikiPrefix}/`,
-			origin: $tw.boot.origin
-		},
-		tiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER);
-	this.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
-
 	// Create a root widget for attaching event handlers.
 	// By using it as the parentWidget for another widget tree, one can reuse the event handlers
 	this.rootWidget = new widget.widget({
@@ -83,6 +74,16 @@ function State(wikiPrefix,serveInfo) {
 	if($tw.safeMode) {
 		this.wiki.processSafeMode();
 	}
+	
+	// Setup the config tiddler. For backwards compatibility we use $:/config/tiddlyweb/host
+	let tiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER),
+	newFields = {
+		title: CONFIG_HOST_TIDDLER,
+		text: `${$tw.boot.origin}${this.boot.pathPrefix}/`,
+		origin: $tw.boot.origin
+	};
+	this.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
+
 	/* // Register typed modules from the tiddlers we've just loaded
 	this.wiki.defineTiddlerModules();
 	// And any modules within plugins, but don't overwrite the $tw modules!
