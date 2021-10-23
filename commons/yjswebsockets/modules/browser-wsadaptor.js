@@ -204,12 +204,11 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 Dispay a password prompt
 */
 WebsocketAdaptor.prototype.displayLoginPrompt = function(syncer) {
-	var self = syncer;
 	var promptInfo = $tw.passwordPrompt.createPrompt({
 		serviceName: $tw.language.getString("LoginToTiddlySpace"),
 		callback: function(data) {
-			self.login(data.username,data.password,function(err,isLoggedIn) {
-				self.syncFromServer();
+			syncer.login(data.username,data.password,function(err,isLoggedIn) {
+				syncer.syncFromServer();
 			});
 			return true; // Get rid of the password prompt
 		}
@@ -219,6 +218,7 @@ WebsocketAdaptor.prototype.displayLoginPrompt = function(syncer) {
 /*
 Attempt to login and invoke the callback(err)
 */
+/*
 WebsocketAdaptor.prototype.login = function(username,password,callback) {
 	let options = {
 		url: this.host + "challenge/tw5-login",
@@ -240,8 +240,6 @@ WebsocketAdaptor.prototype.login = function(username,password,callback) {
 	$tw.utils.httpRequest(options);
 };
 
-/*
-*/
 WebsocketAdaptor.prototype.logout = function(callback) {
 	let self = this,
 		params = "?wiki=" + this.key + "&session=" + (window.sessionStorage.getItem("ws-session") || $tw.utils.uuid.NIL);
@@ -268,6 +266,15 @@ WebsocketAdaptor.prototype.logout = function(callback) {
 	this.logger.log("Logging out:",options);
 	$tw.utils.httpRequest(options);
 };
+*/
+WebsocketAdaptor.prototype.logout = function(callback) {
+	if(self.session) {
+		self.session.destroy();
+		self.session = null;
+	}
+	window.sessionStorage.setItem("ws-session", $tw.utils.uuid.NIL);
+	callback(null);
+}
 
 /*
 Return null (updates from the Yjs binding are automatically stored in the wiki)

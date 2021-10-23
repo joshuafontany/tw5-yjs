@@ -23,15 +23,17 @@ if($tw.node) {
 const fs = require('fs'),
     path = require('path'),
     CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host",
-    DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
+    DEFAULT_HOST_TIDDLER = "$protocol$//$host$/",
+    SETTINGS_FILE = "multiserver.info";
 
 exports.startup = function() {
     // Initialise the multiserver settings
-    let settings;
+    let settings, target = path.join($tw.boot.wikiPath, "settings", SETTINGS_FILE);
     try {
-        settings = JSON.parse(fs.readFileSync(path.join($tw.boot.wikiPath, "settings", "multiserver.json")));
+        settings = JSON.parse(fs.readFileSync(target));
     } catch (err) {
-        $tw.utils.log("Server Settings Error - using default values.");
+        $tw.utils.log(`Multiserver - Error reading file ${target}, using default settings.`);
+        $tw.utils.log("Error: "+err.toString())
         settings = {};
     }
     $tw.boot.settings = $tw.utils.extend($tw.wiki.getTiddlerData("$:/config/commons/multiserver", {}), settings);

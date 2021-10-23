@@ -501,7 +501,7 @@ class WebsocketSession extends observable_js.Observable {
 			decoder = decoding.createDecoder(message),
 			authed = !expired && decoding.readVarString(decoder) == this.id;
 		if(!authed) {
-			$tw.utils.warning(`['${this.username}']  Session: ${session.id} authentication error` + expired ? `, session expired` : ``);
+			$tw.utils.warning(`['${this.username}']  Session: ${this.id} authentication error` + expired ? `, session expired` : ``);
 		}
 		return authed ? decoder : null;
 	}

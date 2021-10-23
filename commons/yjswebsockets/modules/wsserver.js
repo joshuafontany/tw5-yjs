@@ -135,13 +135,13 @@ WebSocketServer.prototype.handleWSConnection = function(socket,request,state) {
 
 		let wikiDoc = $tw.utils.getYDoc(session.pathPrefix);
 		wikiDoc.sessions.set(session, new Set())
-		console.log(`['${session.username}'] Session: ${session.id} Opened socket ${socket._socket._peername.address}:${socket._socket._peername.port}`);
+		console.log(`['${session.username}'] Session: ${session.id} Opened socket ${request.headers['x-forwarded-for']} (${request.connection.remoteAddress})`);
 		// Event handlers
 		socket.on('message', function(event) {
 			wikiDoc.emit('message',[session,event]);
 		});
 		socket.on('close', function(event) {
-			console.log(`['${session.username}'] Session: ${session.id} Closed socket ${socket._socket._peername.address}:${socket._socket._peername.port}	(code ${socket._closeCode})`);
+			console.log(`['${session.username}'] Session: ${session.id} Closed socket ${request.headers['x-forwarded-for']} (${request.connection.remoteAddress})`);
 			session.connecting = false;
 			session.connected = false;
 			session.synced = false;
