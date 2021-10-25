@@ -50,7 +50,7 @@ exports.startup = function() {
     let tiddler = $tw.wiki.getTiddler(CONFIG_HOST_TIDDLER),
     newFields = {
         title: CONFIG_HOST_TIDDLER,
-        text: `${$tw.boot.url}/`,
+        text: `${$tw.boot.origin}${$tw.boot.pathPrefix}/`,
         origin: $tw.boot.origin
     };
     $tw.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));

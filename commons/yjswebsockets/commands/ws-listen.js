@@ -29,10 +29,6 @@ const Command = function (params, commander, callback) {
 };
 
 Command.prototype.execute = function () {
-	if(!$tw.boot.wikiTiddlersPath) {
-		$tw.utils.warning("Warning: Wiki folder '" + $tw.boot.wikiPath + "' does not exist or is missing a tiddlywiki.info file");
-		return;
-	}
 	let self = this;
 	// Set up http(s) server
 	this.server = new MultiServer({
