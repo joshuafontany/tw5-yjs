@@ -176,18 +176,11 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 							return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
 						}
 					});
-					self.session.once('disconnected',function(state,session) {
-						// Invalid session or connection rejected
-						$tw.rootWidget.dispatchEvent({
-							type: "tm-logout"
-						});
-					});
-					// Error handler
-					self.session.once('error',function(event,session) {
-						// Invalid session or connection rejected
-						$tw.rootWidget.dispatchEvent({
-							type: "tm-logout"
-						});
+					self.session.once('aborted',function(state,session) {
+						// Invoke the callback if present
+						if(callback) {
+							return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
+						}
 					});
 				} else if(callback) {
 					return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
@@ -281,7 +274,6 @@ Return null (updates from the Yjs binding are automatically stored in the wiki)
 */
 WebsocketAdaptor.prototype.getUpdatedTiddlers = function(syncer,callback) {
 	callback(null,null);
-	syncer.processTaskQueue();
 }
 
 /*

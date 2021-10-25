@@ -60,7 +60,7 @@ if($tw.node) {
 					}
 					server.authorizationPrincipals[`${state.boot.pathPrefix}/readers`] = readers;
 					server.authorizationPrincipals[`${state.boot.pathPrefix}/writers`] = writers;
-					$tw.utils.log("Added route " + state.boot.pathPrefix);
+					$tw.utils.log(`Added route ${state.boot.url}`);
 				};
 			});
 		});

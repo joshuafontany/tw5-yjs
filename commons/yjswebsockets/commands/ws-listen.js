@@ -65,7 +65,7 @@ Command.prototype.execute = function () {
 					$tw.wsServer.emit('connection', ws, request, state);
 				});
 			} else {
-				$tw.utils.log(`ws-server: Unauthorized Upgrade GET ${request.url}`);
+				$tw.utils.log(`ws-server: Unauthorized Upgrade GET ${$tw.boot.origin+request.url}`);
 				socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
 				socket.destroy();
 				return;

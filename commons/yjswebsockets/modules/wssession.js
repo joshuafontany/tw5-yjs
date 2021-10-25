@@ -76,7 +76,7 @@ messageHandlers[messageHandshake] = (encoder, decoder, session, doc, emitSynced,
 	// Start a heartbeat
 	session.heartbeat();
 	// Start a sync
-	$tw.utils.log(`['${session.username}'] Session: ${session.id} Client Handshake`);
+	$tw.utils.log(`['${session.username}'] Client Handshake for Session ${session.id};`);
 	// send sync step 1
 	const encoderSync = encoding.createEncoder()
 	encoding.writeVarUint(encoderSync, messageSync)
@@ -166,8 +166,9 @@ const setupWS = (session) => {
 				session.ws.close(4023, `Invalid session`);
 			}
 		};
+
 		websocket.onclose = event => {
-			$tw.utils.log(`['${session.username}'] Session: ${session.id} Closed socket ${websocket.url}`);
+			$tw.utils.log(`['${session.username}'] Socket closed ${websocket.url}`);
 			// Clear the ping timers
 			clearTimeout(session.pingTimeout);
 			clearTimeout(session.ping);
@@ -181,38 +182,35 @@ const setupWS = (session) => {
 				awarenessProtocol.removeAwarenessStates(
 					session.awareness,
 					Array.from(session.awareness.getStates().keys()).filter(client => client !== session.doc.clientID),
-					session);
-				session.emit('disconnected', [{
-					code: event.code,
-					reason: event.reason
-				}, session]);
+					session
+				);
 			} else {
 				session.unsuccessfulReconnects++;
 			}
 			// Test for 4023 code
-			if(event.code == 4023 || !session.settings.reconnect.auto || session.unsuccessfulReconnects > session.settings.reconnect.abort) {
+			if(!session.settings.reconnect.auto || session.unsuccessfulReconnects > session.settings.reconnect.abort || event.code == 4023) {
 				// Invalid session or connection rejected
 				session.emit('aborted', [{}, session]);
 			} else {
 				// Start with a very small reconnect timeout and increase timeout by
-				// Math.round(Math.random() * (base = 1200) / 2 * Math.pow((decay = 1.5), session.unsuccessfulReconnects))
+				// Math.round(Math.random() * (base = 500) * Math.pow((decay = 1.5), session.unsuccessfulReconnects))
 				let delay = math.min(
-					math.round(random.rand() * session.settings.reconnect.base / 2 * math.pow(session.settings.reconnect.decay, session.unsuccessfulReconnects)),
+					math.round(random.rand() * session.settings.reconnect.base * math.pow(session.settings.reconnect.decay, session.unsuccessfulReconnects)),
 					session.settings.reconnect.max
 				);
 				setTimeout(setupWS, delay, session);
-				if(session.unsuccessfulReconnects > 2) {
+				if(session.unsuccessfulReconnects > 3) {
 					session.emit('reconnecting', [{}, session]);
 				}
 			}
-		};
-		websocket.onerror = error => {
-			session.emit('error', [{
-				error: error
+			session.emit('disconnected', [{
+				code: event.code,
+				reason: event.reason
 			}, session]);
-		}
+		};
+
 		websocket.onopen = () => {
-			$tw.utils.log(`['${session.username}'] Session: ${session.id} Opened socket ${websocket.url}`);
+			$tw.utils.log(`['${session.username}'] Opened socket ${websocket.url}`);
 			// Reset connection state
 			session.connecting = false;
 			session.connected = true;
@@ -238,8 +236,8 @@ const setupHeartbeat = (session) => {
 	// sends out pings plus a conservative assumption of the latency (10s).  
 	session.pingTimeout = setTimeout(function() {
 		if(session.isReady()) {
-			session.ws.close(4000, `['${session.ws.username}'] Heartbeat Timeout`);
-			$tw.utils.log(`['${session.ws.username}'] Session closed by heartbeat, last message received ${new Date(session.lastMessageReceived*1000).toLocaleString()}`);
+			session.ws.close(4000, `Heartbeat Timeout`);
+			$tw.utils.log(`['${session.username}'] Session closed by heartbeat, last message received ${new Date(session.lastMessageReceived*1000).toLocaleString()}`);
 		}
 	}, session.settings.heartbeat.timeout + session.settings.heartbeat.interval);
 	// Send the next heartbeat ping after session.settings.heartbeat.interval ms

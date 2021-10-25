@@ -100,7 +100,6 @@ Return null (updates from the Yjs binding are automatically stored in the wiki)
 */
 /* WebsocketAdaptor.prototype.getUpdatedTiddlers = function(syncer,callback) {
 	callback(null,null);
-    syncer.processTaskQueue();
 } */
 
 /*
@@ -112,8 +111,8 @@ WebsocketAdaptor.prototype.saveTiddler = function(tiddler,callback,options) {
 		if(err) {
 			self.logger.log(err);
 		}
+		self.fsadaptor.saveTiddler(tiddler,callback,options);
 	})
-    this.fsadaptor.saveTiddler(tiddler,callback,options)
 };
 
 /*
@@ -141,8 +140,8 @@ WebsocketAdaptor.prototype.deleteTiddler = function(title,callback,options) {
 		if(err) {
 			self.logger.log(err);
 		}
+		self.fsadaptor.deleteTiddler(title,callback,options);
 	});
-    this.fsadaptor.deleteTiddler(title,callback,options);
 };
 
 if($tw.node) {

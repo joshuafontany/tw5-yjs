@@ -140,7 +140,7 @@ class WikiDoc extends Y.Doc {
 							break
 						}
 						case messageHandshake: {
-							console.log(`['${session.username}'] Session: ${session.id} Server Handshake`);
+							$tw.utils.log(`['${session.username}'] Server Handshake for Session ${session.id}`);
 							// Refresh the session to expire in 60 minutes
 							$tw.wsServer.refreshSession(session, 1000 * 60 * 60);
 							// send messageHandshake
@@ -193,7 +193,7 @@ class WikiDoc extends Y.Doc {
 					encoding.writeVarUint(encoder, messageAuth);
 					authProtocol.writePermissionDenied(encoder, "WebSocket Authentication Error - Invalid Client Message");
 					session.send(encoder, this.name);
-					session.ws.close(4023, `Invalid session`);
+					session.ws.close(4023, `Invalid`);
 				}
 			})
 			/**

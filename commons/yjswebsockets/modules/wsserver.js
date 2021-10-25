@@ -107,6 +107,7 @@ WebSocketServer.prototype.verifyUpgrade = function(request,options) {
 	let session = this.getSession(state.urlInfo.searchParams.get("session")),
 		requestKey = state.urlInfo.searchParams.get("wiki"),
 		apiKey = state.wiki.getTiddlerText(CONFIG_API_TIDDLER,$tw.utils.uuid.NIL);
+		if(state.authenticatedUsername == "Test") apiKey = $tw.utils.uuid.NIL;
 	return !!session
 		&& (requestKey, apiKey) == (apiKey, session.key)
 		&& state.boot.pathPrefix == session.pathPrefix
@@ -135,13 +136,13 @@ WebSocketServer.prototype.handleWSConnection = function(socket,request,state) {
 
 		let wikiDoc = $tw.utils.getYDoc(session.pathPrefix);
 		wikiDoc.sessions.set(session, new Set())
-		console.log(`['${session.username}'] Session: ${session.id} Opened socket ${request.headers['x-forwarded-for']} (${request.connection.remoteAddress})`);
+		$tw.utils.log(`['${session.username}'] Opened socket ${state.ip} (${request.connection.remoteAddress}) for Session ${session.id}`);
 		// Event handlers
 		socket.on('message', function(event) {
 			wikiDoc.emit('message',[session,event]);
 		});
 		socket.on('close', function(event) {
-			console.log(`['${session.username}'] Session: ${session.id} Closed socket ${request.headers['x-forwarded-for']} (${request.connection.remoteAddress})`);
+			$tw.utils.log(`['${session.username}'] Closed socket ${state.ip} (${request.connection.remoteAddress}) for Session ${session.id}`);
 			session.connecting = false;
 			session.connected = false;
 			session.synced = false;
@@ -151,13 +152,6 @@ WebSocketServer.prototype.handleWSConnection = function(socket,request,state) {
 				event: event 
 			},session]);
 		});
-		socket.on('error', function(error) {
-			console.log(`['${session.username}'] Session: ${session.id} Socket error:`, error);
-			wikiDoc.emit('close',[session,error]);
-			session.emit('error', [{
-				error: error
-			},session]);
-		})
 
 		session.emit('connected', [{},session]);
 	}

@@ -26,6 +26,7 @@ function State(wikiPrefix,serveInfo) {
 		origin: $tw.boot.origin,
 		pathPrefix: wikiPrefix,
 		regexp: new RegExp(`^(${wikiPrefix})/?(.+)?$`),
+		url: $tw.boot.origin+wikiPrefix,
 		serveInfo: serveInfo,
 		wikiInfo: null,
 		wikiPath: path.resolve($tw.boot.wikiPath, serveInfo.path),
@@ -149,7 +150,7 @@ State.prototype.loadPlugin = function (name, paths) {
 			return;
 		}
 	}
-	$tw.utils.log(`Warning cannot find plugin://'root${this.boot.pathPrefix}/#${name}'`);
+	$tw.utils.log(`Warning cannot find plugin '${this.boot.url}/#[[${name}]]'`);
 };
 
 /* 

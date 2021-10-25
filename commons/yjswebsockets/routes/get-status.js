@@ -42,7 +42,7 @@ Returns server status information
 				});
 			}
 			if(state.server.get('debug-level') !== "none") {
-				$tw.utils.log(`['${session.username}'] GET ${state.urlInfo.href} (${conectionIp})`);
+				$tw.utils.log(`['${session.username}'] GET ${state.boot.url}${state.urlInfo.href} (${conectionIp})`);
 			}
 			// Set a login window for 60 seconds.
 			$tw.wsServer.refreshSession(session, 1000 * 60)

@@ -33,7 +33,7 @@ exports.startup = function() {
         settings = JSON.parse(fs.readFileSync(target));
     } catch (err) {
         $tw.utils.log(`Multiserver - Error reading file ${target}, using default settings.`);
-        $tw.utils.log("Error: "+err.toString())
+        $tw.utils.log("Error: "+err.toString());
         settings = {};
     }
     $tw.boot.settings = $tw.utils.extend($tw.wiki.getTiddlerData("$:/config/commons/multiserver", {}), settings);
@@ -41,15 +41,16 @@ exports.startup = function() {
     $tw.boot.origin = $tw.boot.settings.origin || DEFAULT_HOST_TIDDLER.replace(/\/$/, '');
     $tw.boot.pathPrefix = $tw.boot.settings["path-prefix"] || "";
     $tw.boot.regexp = null;
+    $tw.boot.url = $tw.boot.origin + $tw.boot.pathPrefix;
     $tw.boot.serveInfo = {
         name: $tw.boot.pathPrefix,
-        path: $tw.boot.pathPrefix || "./"
+        path: $tw.boot.wikiPath || "./"
     };
     // Setup the config tiddler. For backwards compatibility we use $:/config/tiddlyweb/host
     let tiddler = $tw.wiki.getTiddler(CONFIG_HOST_TIDDLER),
     newFields = {
         title: CONFIG_HOST_TIDDLER,
-        text: `${$tw.boot.origin}${$tw.boot.pathPrefix}/`,
+        text: `${$tw.boot.url}/`,
         origin: $tw.boot.origin
     };
     $tw.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
