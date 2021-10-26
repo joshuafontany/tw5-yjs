@@ -75,15 +75,6 @@ function State(wikiPrefix,serveInfo) {
 	if($tw.safeMode) {
 		this.wiki.processSafeMode();
 	}
-	
-	// Setup the config tiddler. For backwards compatibility we use $:/config/tiddlyweb/host
-	let tiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER),
-	newFields = {
-		title: CONFIG_HOST_TIDDLER,
-		text: `${$tw.boot.origin}${this.boot.pathPrefix}/`,
-		origin: $tw.boot.origin
-	};
-	this.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
 
 	/* // Register typed modules from the tiddlers we've just loaded
 	this.wiki.defineTiddlerModules();
@@ -150,7 +141,7 @@ State.prototype.loadPlugin = function (name, paths) {
 			return;
 		}
 	}
-	$tw.utils.log(`Warning cannot find plugin '${this.boot.url}/#[[${name}]]'`);
+	$tw.utils.log(`Warning cannot find plugin '${name}' for wiki '${this.boot.url}''`);
 };
 
 /* 

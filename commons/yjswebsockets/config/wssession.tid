@@ -20,6 +20,6 @@ note-reconnect-abort: Automatically abort after this many tries.
     "base": 500,
     "max": 60000,
     "decay": 1.5,
-    "abort": 10
+    "abort": 5
   }
 }

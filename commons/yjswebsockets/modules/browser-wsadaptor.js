@@ -32,27 +32,8 @@ function WebsocketAdaptor(options) {
 	this.isReadOnly = false;
 	this.isAnonymous = true;
 
-	/**
-	 * @type {{bindState: function(string,WikiDoc):void, writeState:function(string,WikiDoc):Promise<any>, provider: any}|null}
-	 */
-	$tw.utils.log('Persisting Y documents to y-indexeddb')
-	this.persistence = {
-		provider: require('./y-indexeddb.cjs').IndexeddbPersistence,
-		idbs: new Map(),
-		bindState: (docName,ydoc) => {
-			let indexeddbProvider = new this.persistence.provider(docName,ydoc);
-			indexeddbProvider.on('destroy',() => {
-				this.persistence.idbs.delete(docName);
-			});
-			this.persistence.idbs.set(docName,indexeddbProvider);
-		},
-		writeState: (docName,ydoc) => {}
-	}
-
 	// Setup the Y wikiDoc
 	let wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
-	// bind to the persistence provider
-	//this.persistence.bindState(this.pathPrefix,wikiDoc);
 }
 
 // Syncadaptor properties
@@ -82,7 +63,7 @@ WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {
 }
 
 WebsocketAdaptor.prototype.isReady = function() {
-	return $tw.ydocs.has(this.pathPrefix) && $tw.ybindings.has(this.pathPrefix);
+	return $tw.ybindings.has(this.pathPrefix) && this.session && this.session.isReady();
 }
 
 WebsocketAdaptor.prototype.getHost = function() {
@@ -102,7 +83,7 @@ WebsocketAdaptor.prototype.getPathPrefix = function() {
 	let hostTiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER),
 		host = hostTiddler? hostTiddler.fields.text: DEFAULT_HOST_TIDDLER,
 		origin = hostTiddler? hostTiddler.fields.origin: DEFAULT_HOST_TIDDLER.replace(/\/$/, '');
-	return host.replace(/\/$/,'').replace(origin,'');
+	return host.replace(origin,'').replace(/\/$/,'');
 }
 
 WebsocketAdaptor.prototype.getKey = function() {
@@ -131,22 +112,18 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 				json = JSON.parse(data);
 			} catch (e) {
 			}
-			if(json) {
+			if(json.session) {
 				// Check if we're logged in
 				username = json.username;
 				self.isLoggedIn = !!json.username;
 				self.isReadOnly = !!json["read_only"];
 				self.isAnonymous = !!json.anonymous;
 
-				if(self.session && json.session && self.session.id == json.session) {
-					this.isReady() && self.session.connect();
-					// Invoke the callback if present
-					if(callback) {
-						return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
-					}
-				} else if(json.session) {
+				if(!self.session || self.session.id !== json.session) {
 					// Destroy the old session
 					self.session && self.session.destroy();
+					// Set the session id
+					window.sessionStorage.setItem("ws-session", json.session)
 					// Setup the session
 					let options = {
 						id: json.session,
@@ -166,23 +143,32 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 					options.url.searchParams.append("wiki", self.key);
 					options.url.searchParams.append("session", json.session);
 					self.session = new WebsocketSession(options);
-					// Set the session id
-					window.sessionStorage.setItem("ws-session", self.session.id)
-					// Bind and syncFromServer after the doc has been synced
-					self.session.once('synced',function(state,session) {
-						self.setYBinding($tw,session.awareness);
-						// Invoke the callback if present
-						if(callback) {
-							return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
+				} else if (!self.session.isReady()) {
+					self.session.connect();
+				}
+				if(!self.session.synced) {
+					// Bind after the doc has been synced
+					self.session.once('synced',function(synced,session) {
+						if(synced) {
+							self.logger.log(`[${session.username}] Session synced`);
+							self.session._observers.delete("aborted");
+							self.setYBinding($tw,session.awareness);
+							if(callback) {
+								// Invoke the callback if present
+								return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
+							}
 						}
 					});
 					self.session.once('aborted',function(state,session) {
-						// Invoke the callback if present
+						self.logger.log(`[${session.username}] Session aborted`);
+						self.session._observers.delete("synced");
 						if(callback) {
+							// Invoke the callback if present
 							return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
 						}
 					});
 				} else if(callback) {
+					// Invoke the callback if present
 					return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
 				}
 			} else if(callback) {
@@ -261,9 +247,9 @@ WebsocketAdaptor.prototype.logout = function(callback) {
 };
 */
 WebsocketAdaptor.prototype.logout = function(callback) {
-	if(self.session) {
-		self.session.destroy();
-		self.session = null;
+	if(this.session) {
+		this.session.destroy();
+		this.session = null;
 	}
 	window.sessionStorage.setItem("ws-session", $tw.utils.uuid.NIL);
 	callback(null);
@@ -273,7 +259,13 @@ WebsocketAdaptor.prototype.logout = function(callback) {
 Return null (updates from the Yjs binding are automatically stored in the wiki)
 */
 WebsocketAdaptor.prototype.getUpdatedTiddlers = function(syncer,callback) {
-	callback(null,null);
+	if(!this.isReady()) {
+		syncer.getStatus(function(err,isLoggedIn) {
+			callback(null,null);
+		});
+	} else {
+		callback(null,null);
+	}
 }
 
 /*
@@ -312,7 +304,6 @@ WebsocketAdaptor.prototype.deleteTiddler = function(title,callback,options) {
 		if(err) {
 			callback(err);
 		}
-		// report the Revision
 		callback(null,null);
 	});
 }

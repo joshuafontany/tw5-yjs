@@ -22,7 +22,6 @@ if($tw.node) {
 
 const fs = require('fs'),
     path = require('path'),
-    CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host",
     DEFAULT_HOST_TIDDLER = "$protocol$//$host$/",
     SETTINGS_FILE = "multiserver.info";
 
@@ -44,16 +43,8 @@ exports.startup = function() {
     $tw.boot.url = $tw.boot.origin + $tw.boot.pathPrefix;
     $tw.boot.serveInfo = {
         name: $tw.boot.pathPrefix,
-        path: $tw.boot.wikiPath || "./"
+        path: $tw.boot.wikiPath
     };
-    // Setup the config tiddler. For backwards compatibility we use $:/config/tiddlyweb/host
-    let tiddler = $tw.wiki.getTiddler(CONFIG_HOST_TIDDLER),
-    newFields = {
-        title: CONFIG_HOST_TIDDLER,
-        text: `${$tw.boot.origin}${$tw.boot.pathPrefix}/`,
-        origin: $tw.boot.origin
-    };
-    $tw.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
 };
 
 }

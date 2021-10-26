@@ -190,7 +190,8 @@ const setupWS = (session) => {
 			// Test for 4023 code
 			if(!session.settings.reconnect.auto || session.unsuccessfulReconnects > session.settings.reconnect.abort || event.code == 4023) {
 				// Invalid session or connection rejected
-				session.emit('aborted', [{}, session]);
+				session.unsuccessfulReconnects = 0;
+				session.emit('aborted', [{status: "aborted"}, session]);
 			} else {
 				// Start with a very small reconnect timeout and increase timeout by
 				// Math.round(Math.random() * (base = 500) * Math.pow((decay = 1.5), session.unsuccessfulReconnects))
@@ -200,10 +201,11 @@ const setupWS = (session) => {
 				);
 				setTimeout(setupWS, delay, session);
 				if(session.unsuccessfulReconnects > 3) {
-					session.emit('reconnecting', [{}, session]);
+					session.emit('reconnecting', [{status: "reconnecting"}, session]);
 				}
 			}
 			session.emit('disconnected', [{
+				status: "disconnected",
 				code: event.code,
 				reason: event.reason
 			}, session]);
@@ -221,10 +223,10 @@ const setupWS = (session) => {
 			encoding.writeVarUint(encoder, messageHandshake);
 			session.send(encoder, session.pathPrefix);
 
-			session.emit('connected', [{}, session]);
+			session.emit('connected', [{status: "connected"}, session]);
 		};
 
-		session.emit('connecting', [{}, session]);
+		session.emit('connecting', [{status: "connecting"}, session]);
 	}
 };
 
@@ -413,7 +415,6 @@ class WebsocketSession extends observable_js.Observable {
 		clearTimeout(this.pingTimeout);
 		clearTimeout(this.ping);
 		this.disconnect();
-		this.ws = null;
 		super.destroy();
 	}
 
@@ -426,6 +427,7 @@ class WebsocketSession extends observable_js.Observable {
 		} else {
 			$tw.wsServer.closeWSConnection($tw.utils.getYDoc(this.pathPrefix), this, err);
 		}
+		this.ws = null;
 	}
 
 	connect() {
@@ -434,7 +436,8 @@ class WebsocketSession extends observable_js.Observable {
 			return;
 		}
 		this.shouldConnect = true;
-		if(!this.connected && this.ws === null) {
+		if(!this.isReady()) {
+			this.ws = null;
 			setupWS(this);
 		}
 	}

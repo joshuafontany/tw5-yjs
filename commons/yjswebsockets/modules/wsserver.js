@@ -149,11 +149,12 @@ WebSocketServer.prototype.handleWSConnection = function(socket,request,state) {
 			// Close the WikiDoc session when disconnected
 			wikiDoc.emit('close',[session,event]);
 			session.emit('disconnected', [{
+				status: "disconnected",
 				event: event 
 			},session]);
 		});
 
-		session.emit('connected', [{},session]);
+		session.emit('connected', [{status: "connected"},session]);
 	}
 }
 

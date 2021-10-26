@@ -13,13 +13,12 @@ A sync adaptor module for synchronising Yjs websockets with the local filesystem
 
 // Get a reference to the file system
 const FileSystemAdaptor = require("$:/plugins/tiddlywiki/filesystem/filesystemadaptor.js").adaptorClass,
-	CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host",
-	DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
+	CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host";
 
 function WebsocketAdaptor(options) {
 	this.wiki = options.wiki;
 	this.boot = options.boot || $tw.boot;
-	this.pathPrefix = this.getPathPrefix();
+	this.pathPrefix = this.boot.pathPrefix
 	this.logger = new $tw.utils.Logger("wsadaptor",{colour: "blue"});
 
 	// Attach a core filesystemadaptor to this syncadaptor
@@ -52,6 +51,15 @@ function WebsocketAdaptor(options) {
 	let wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
 	// bind to the persistence provider
 	//this.persistence.bindState(this.pathPrefix,wikiDoc);
+
+	// Setup the config tiddler. For backwards compatibility we use $:/config/tiddlyweb/host
+	let config = this.wiki.getTiddler(CONFIG_HOST_TIDDLER),
+	newFields = {
+		title: CONFIG_HOST_TIDDLER,
+		text: `${this.boot.origin+this.boot.pathPrefix}/`,
+		origin: this.boot.origin
+	};
+	this.wiki.addTiddler(new $tw.Tiddler(config,newFields));
 }
 
 WebsocketAdaptor.prototype.name = "wsadaptor";
@@ -71,36 +79,9 @@ WebsocketAdaptor.prototype.isReady = function() {
 	return $tw.ydocs.has(this.pathPrefix) && $tw.ybindings.has(this.pathPrefix);
 };
 
-WebsocketAdaptor.prototype.getHost = function() {
-	let text = this.wiki.getTiddlerText(CONFIG_HOST_TIDDLER,DEFAULT_HOST_TIDDLER),
-		substitutions = [
-			{name: "protocol", value: document.location.protocol},
-			{name: "host", value: document.location.host}
-		];
-	for(let t=0; t<substitutions.length; t++) {
-		let s = substitutions[t];
-		text = $tw.utils.replaceString(text,new RegExp("\\$" + s.name + "\\$","mg"),s.value);
-	}
-	return text;
-}
-
-WebsocketAdaptor.prototype.getPathPrefix = function() {
-	let hostTiddler = this.wiki.getTiddler(CONFIG_HOST_TIDDLER),
-		host = hostTiddler? hostTiddler.fields.text: DEFAULT_HOST_TIDDLER,
-		origin = hostTiddler? hostTiddler.fields.origin: DEFAULT_HOST_TIDDLER.replace(/\/$/, '');
-	return host.replace(/\/$/,'').replace(origin,'');
-}
-
 WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {
 	return this.fsadaptor.getTiddlerInfo(tiddler);
 };
-
-/*
-Return null (updates from the Yjs binding are automatically stored in the wiki)
-*/
-/* WebsocketAdaptor.prototype.getUpdatedTiddlers = function(syncer,callback) {
-	callback(null,null);
-} */
 
 /*
 Save a tiddler and invoke the callback with (err,adaptorInfo,revision)
@@ -144,6 +125,6 @@ WebsocketAdaptor.prototype.deleteTiddler = function(title,callback,options) {
 	});
 };
 
-if($tw.node) {
+if(FileSystemAdaptor) {
 	exports.adaptorClass = WebsocketAdaptor;
 }
