@@ -63,7 +63,7 @@ WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {
 }
 
 WebsocketAdaptor.prototype.isReady = function() {
-	return $tw.ybindings.has(this.pathPrefix) && this.session && this.session.isReady();
+	return $tw.ybindings.has(this.pathPrefix) && this.session && this.session.synced;
 }
 
 WebsocketAdaptor.prototype.getHost = function() {
@@ -148,25 +148,24 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 				}
 				if(!self.session.synced) {
 					// Bind after the doc has been synced
-					self.session.once('synced',function(synced,session) {
-						if(synced) {
-							self.logger.log(`[${session.username}] Session synced`);
-							self.session._observers.delete("aborted");
+					self.session.once('status',function(msg,session) {
+						self.logger.log(`[${session.username}] Session ${msg.status}`);
+						if(msg.status == "synced") {
 							self.setYBinding($tw,session.awareness);
-							if(callback) {
-								// Invoke the callback if present
-								return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
-							}
 						}
-					});
-					self.session.once('aborted',function(state,session) {
-						self.logger.log(`[${session.username}] Session aborted`);
-						self.session._observers.delete("synced");
 						if(callback) {
 							// Invoke the callback if present
 							return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
 						}
 					});
+					// Warn of disconnections
+					self.session.on('status', function(msg,session){
+						if(msg.status == "aborted") {
+							self.logger.alert($tw.language.getString("Error/NetworkErrorAlert"));
+						} else if (msg.status == "synced") {
+							self.logger.clearAlerts();
+						}
+					})
 				} else if(callback) {
 					// Invoke the callback if present
 					return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);

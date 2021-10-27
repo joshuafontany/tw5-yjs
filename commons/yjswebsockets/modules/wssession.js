@@ -52,6 +52,7 @@ messageHandlers[messageSync] = (encoder, decoder, session, doc, emitSynced, mess
 	const syncMessageType = syncProtocol.readSyncMessage(decoder, encoder, doc, session);
 	if(emitSynced && syncMessageType === syncProtocol.messageYjsSyncStep2 && !session.synced) {
 		session.synced = true;
+		session.emit('status', [{status: "synced"}, session]);
 	}
 };
 
@@ -191,7 +192,7 @@ const setupWS = (session) => {
 			if(!session.settings.reconnect.auto || session.unsuccessfulReconnects > session.settings.reconnect.abort || event.code == 4023) {
 				// Invalid session or connection rejected
 				session.unsuccessfulReconnects = 0;
-				session.emit('aborted', [{status: "aborted"}, session]);
+				session.emit('status', [{status: "aborted"}, session]);
 			} else {
 				// Start with a very small reconnect timeout and increase timeout by
 				// Math.round(Math.random() * (base = 500) * Math.pow((decay = 1.5), session.unsuccessfulReconnects))
