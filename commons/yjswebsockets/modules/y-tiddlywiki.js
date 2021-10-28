@@ -43,14 +43,17 @@ module-type: library
  
  class TiddlywikiBinding {
 	/**
-		* @param {string} pathPrefix
+		* @param {string} docid
 		* @param {state} state
 		* @param {Awareness} [awareness]
 		*/
-	constructor (pathPrefix, state, awareness) {
+	constructor (docid, state, awareness) {
 		const mux = createMutex()
 		this.mux = mux
-		const wikiDoc = $tw.utils.getYDoc(pathPrefix);
+		this.logger = new $tw.utils.Logger(`[${state.syncadaptor.pathPrefix}|'binding']`,{colour: "brown"});
+		(!!state.syncer) && this.logger.setSaveBuffer(state.syncadaptor.logger.saveBufferLogger);
+
+		const wikiDoc = $tw.utils.getYDoc(docid);
 		this.wikiDoc = wikiDoc
 		const wikiTiddlers = wikiDoc.getArray("tiddlers");
 		this.wikiTiddlers = wikiTiddlers;
@@ -117,8 +120,7 @@ module-type: library
 						}
 					});
 					changedTiddlers.forEach((target,title) => {
-						let username = transaction.origin.username || "binding";
-						$tw.utils.log(`['${username}'] Stored ${title}`);
+						this.logger.log(`Stored ${title}`);
 						this._storeTiddler(target);
 					});
 				}
@@ -130,8 +132,7 @@ module-type: library
 					event.changes.added && event.changes.added.forEach(item => {
 						$tw.utils.each(item.content.arr,(title) => {
 							// A tiddler was deleted
-							let username = transaction.origin.username || "binding";
-							$tw.utils.log(`['${username}'] Deleted ${title}`);
+							this.logger.log(`Deleted ${title}`);
 							state.wiki.deleteTiddler(title);
 						});						
 					});
@@ -186,7 +187,7 @@ module-type: library
 				});
 				if(Object.keys(changedFields).length > 0) {
 					this.wikiDoc.transact(() => {
-						$tw.utils.log(`['binding'] Updating ${title}`);
+						this.logger.log(`Updating ${title}`);
 						if(tiddlerIndex == -1){
 							this.wikiTiddlers.push([new Y.Map()]);
 							this.wikiTitles.push([title]);
@@ -223,7 +224,7 @@ module-type: library
 			}
 		}
 		this._load = (title) => {
-			$tw.utils.log(`['binding'] Loading ${title}`);
+			this.logger.log(`Loading ${title}`);
 			let fields = {};
 			let tiddlerIndex = this.wikiTitles.toArray().indexOf(title)
 			let tsIndex = this.wikiTombstones.toArray().indexOf(title)
@@ -242,7 +243,7 @@ module-type: library
 				let tsIndex = this.wikiTombstones.toArray().indexOf(title)
 				if (tiddlerIndex !== -1 || tsIndex == -1) {
 					this.wikiDoc.transact(() => {
-						$tw.utils.log(`['binding'] Deleting ${title}`);
+						this.logger.log(`Deleting ${title}`);
 						if(tiddlerIndex !== -1 ) {
 							this.wikiTitles.delete(tiddlerIndex,1)
 							this.wikiTiddlers.delete(tiddlerIndex,1)
@@ -262,12 +263,12 @@ module-type: library
 					let titles = state.syncer.filterFn.call(state.wiki),
 						maps = this.wikiTitles.toArray(),
 						diff = maps.filter(x => titles.indexOf(x) === -1);
-					$tw.utils.log(`['binding'] Startup, deleting ${diff.length} tiddlers`);
+						this.logger.log(`Startup, deleting ${diff.length} tiddlers`);
 					diff.forEach((title) => {
 						this._delete(title);
 					});
 					// Update the tiddlers that changed during server restart
-					$tw.utils.log(`['binding'] Startup, testing ${titles.length} tiddlers`);
+					this.logger.log(`Startup, testing ${titles.length} tiddlers`);
 					$tw.utils.each(titles,(title) => {
 						var tiddler = state.wiki.getTiddler(title);
 						if(tiddler) {

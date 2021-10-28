@@ -13,7 +13,7 @@ A sync adaptor for syncing changes from/to a browser using Yjs websockets
 
 const WebsocketSession = require('./wssession.js').WebsocketSession,
 	Y = require('./yjs.cjs'),
-	CONFIG_API_TIDDLER = "$:/config/tiddlyweb/api",
+	CONFIG_UUID_TIDDLER = "$:/status/UUID",
 	CONFIG_HOST_TIDDLER = "$:/config/tiddlyweb/host",
 	DEFAULT_HOST_TIDDLER = "$protocol$//$host$/";
 
@@ -33,7 +33,7 @@ function WebsocketAdaptor(options) {
 	this.isAnonymous = true;
 
 	// Setup the Y wikiDoc
-	let wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
+	let wikiDoc = $tw.utils.getYDoc(this.key);
 }
 
 // Syncadaptor properties
@@ -49,7 +49,7 @@ WebsocketAdaptor.prototype.setLoggerSaveBuffer = function(loggerForSaving) {
 };
 
 WebsocketAdaptor.prototype.setYBinding = function(state,awareness) {
-	let binding = $tw.utils.getYBinding(this.pathPrefix,state,awareness);
+	let binding = $tw.utils.getYBinding(this.key,state,awareness);
 	if(binding.awareness !== awareness) {
 		binding.bindAwareness(awareness);
 	}
@@ -63,7 +63,7 @@ WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {
 }
 
 WebsocketAdaptor.prototype.isReady = function() {
-	return $tw.ybindings.has(this.pathPrefix) && this.session && this.session.synced;
+	return $tw.ybindings.has(this.key) && this.session && this.session.synced;
 }
 
 WebsocketAdaptor.prototype.getHost = function() {
@@ -87,7 +87,7 @@ WebsocketAdaptor.prototype.getPathPrefix = function() {
 }
 
 WebsocketAdaptor.prototype.getKey = function() {
-	let key = this.wiki.getTiddlerText(CONFIG_API_TIDDLER,$tw.utils.uuid.NIL);
+	let key = this.wiki.getTiddlerText(CONFIG_UUID_TIDDLER,null);
 	return $tw.utils.uuid.validate(key) && key;
 }
 
@@ -142,27 +142,30 @@ WebsocketAdaptor.prototype.getStatus = function(callback) {
 					}
 					options.url.searchParams.append("wiki", self.key);
 					options.url.searchParams.append("session", json.session);
-					self.session = new WebsocketSession(options);
+					self.session = new WebsocketSession(options,self.logger);
 				} else if (!self.session.isReady()) {
 					self.session.connect();
 				}
 				if(!self.session.synced) {
 					// Bind after the doc has been synced
-					self.session.once('status',function(msg,session) {
-						self.logger.log(`[${session.username}] Session ${msg.status}`);
-						if(msg.status == "synced") {
+					self.session.once('synced',function(state,session) {
+						if(state){
+							self.logger.log(`[${session.username}] Session synced`);
 							self.setYBinding($tw,session.awareness);
-						}
-						if(callback) {
+							if(callback) {
+								// Invoke the callback if present
+								return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
+							}
+						} else if(callback) {
 							// Invoke the callback if present
 							return callback(null,self.isLoggedIn,username,self.isReadOnly,self.isAnonymous);
 						}
 					});
 					// Warn of disconnections
-					self.session.on('status', function(msg,session){
-						if(msg.status == "aborted") {
+					self.session.on('status', function(event,session){
+						if(event.status == "disconencted") {debugger;
 							self.logger.alert($tw.language.getString("Error/NetworkErrorAlert"));
-						} else if (msg.status == "synced") {
+						} else if (event.status == "connected") {
 							self.logger.clearAlerts();
 						}
 					})
@@ -272,7 +275,7 @@ Save a tiddler and invoke the callback with (err,adaptorInfo,revision)
 */
 WebsocketAdaptor.prototype.saveTiddler = function(tiddler,callback,options) {
 	let adaptorInfo = options.tiddlerInfo? options.tiddlerInfo.adaptorInfo: this.getTiddlerInfo(tiddler.fields.title);
-	$tw.ybindings.get(this.pathPrefix).save(tiddler,function(err){
+	$tw.ybindings.get(this.key).save(tiddler,function(err){
 		if(err) {
 			callback(err);
 		}
@@ -287,7 +290,7 @@ Load a tiddler and invoke the callback with (err,tiddlerFields)
 We do need to implement loading for the ws adaptor, because readOnly users shouldn't be able to change the wikistate.
 */
 WebsocketAdaptor.prototype.loadTiddler = function(title,callback) {
-	$tw.ybindings.get(this.pathPrefix).load(title,function(err,fields){
+	$tw.ybindings.get(this.key).load(title,function(err,fields){
 		if(err) {
 			callback(err);
 		}
@@ -299,7 +302,7 @@ WebsocketAdaptor.prototype.loadTiddler = function(title,callback) {
 Delete a tiddler and invoke the callback with (err)
 */
 WebsocketAdaptor.prototype.deleteTiddler = function(title,callback,options) {
-	$tw.ybindings.get(this.pathPrefix).delete(title,function(err){
+	$tw.ybindings.get(this.key).delete(title,function(err){
 		if(err) {
 			callback(err);
 		}

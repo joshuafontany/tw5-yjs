@@ -52,7 +52,6 @@ messageHandlers[messageSync] = (encoder, decoder, session, doc, emitSynced, mess
 	const syncMessageType = syncProtocol.readSyncMessage(decoder, encoder, doc, session);
 	if(emitSynced && syncMessageType === syncProtocol.messageYjsSyncStep2 && !session.synced) {
 		session.synced = true;
-		session.emit('status', [{status: "synced"}, session]);
 	}
 };
 
@@ -77,18 +76,18 @@ messageHandlers[messageHandshake] = (encoder, decoder, session, doc, emitSynced,
 	// Start a heartbeat
 	session.heartbeat();
 	// Start a sync
-	$tw.utils.log(`['${session.username}'] Client Handshake for Session ${session.id};`);
+	session.logger.log(`Client Handshake for Session ${session.id};`);
 	// send sync step 1
 	const encoderSync = encoding.createEncoder()
 	encoding.writeVarUint(encoderSync, messageSync)
 	syncProtocol.writeSyncStep1(encoderSync, doc)
-	session.send(encoderSync, session.pathPrefix);
+	session.send(encoderSync, session.key);
 	// broadcast local awareness state
 	if(session.awareness.getLocalState() !== null) {
 		const encoderAwarenessState = encoding.createEncoder();
 		encoding.writeVarUint(encoderAwarenessState, messageAwareness);
 		encoding.writeVarUint8Array(encoderAwarenessState, awarenessProtocol.encodeAwarenessUpdate(session.awareness, [session.doc.clientID]));
-		session.send(encoderAwarenessState, session.pathPrefix);
+		session.send(encoderAwarenessState, session.key);
 	}
 	// Notify listeners
 	session.emit('handshake',[session]);
@@ -102,7 +101,7 @@ messageHandlers[messageHeartbeat] = (encoder, decoder, session, doc, emitSynced,
 		const encoderHeartbeat = encoding.createEncoder()
 		encoding.writeVarUint(encoderHeartbeat, messageHeartbeat)
 		encoding.writeVarUint(encoderHeartbeat, 1)
-		session.send(encoderHeartbeat, session.pathPrefix);
+		session.send(encoderHeartbeat, session.key);
 	} else if(heartbeatType == 1) {
 		// Incoming pong, setup a heartbeat
 		session.heartbeat();
@@ -113,7 +112,7 @@ messageHandlers[messageHeartbeat] = (encoder, decoder, session, doc, emitSynced,
  * @param {WebsocketSession} session
  * @param {string} reason
  */
-const permissionDeniedHandler = (session, reason) => $tw.utils.warning(`[${session.id}] Permission denied to access ${session.url}.\n${reason}`);
+const permissionDeniedHandler = (session, reason) => session.logger.alert(`Permission denied to access ${session.url}.\n${reason}`);
 
 /**
  * @param {WebsocketSession} session
@@ -152,24 +151,24 @@ const setupWS = (session) => {
 				if( /** @type {any} */ (messageHandler)) {
 					messageHandler(encoder, decoder, session, eventDoc, true, messageType);
 				} else {
-					$tw.utils.warning(`['${session.username}'] Session: ${session.id} Unable to compute message, ydoc ${message.doc.name}`);
+					session.logger.alert(`Unable to compute message; WikiDoc '${message.doc.name}', Session '${session.id}';`);
 				}
 				if(encoding.length(encoder) > 1) {
 					session.send(encoder, eventDoc.name);
 				}
 			} else {
-				$tw.utils.warning(`['${session.username}'] Session: ${session.id} Unable to parse message:`, event);
+				session.logger.alert(`Unable to parse message; WikiDoc '${message.doc.name}', Session '${session.id}';`,JSON.stringify(event,null,$tw.config.preferences.jsonSpaces));
 				// send messageAuth denied
 				const encoder = encoding.createEncoder();
 				encoding.writeVarUint(encoder, messageAuth);
 				authProtocol.writePermissionDenied(encoder, "WebSocket Authentication Error - Invalid Server Message");
-				session.send(encoder, session.pathPrefix);
+				session.send(encoder, session.key);
 				session.ws.close(4023, `Invalid session`);
 			}
 		};
 
 		websocket.onclose = event => {
-			$tw.utils.log(`['${session.username}'] Socket closed ${websocket.url}`);
+			session.logger.log(`Socket closed ${websocket.url}`);
 			// Clear the ping timers
 			clearTimeout(session.pingTimeout);
 			clearTimeout(session.ping);
@@ -178,7 +177,6 @@ const setupWS = (session) => {
 			session.connecting = false;
 			if(session.connected) {
 				session.connected = false;
-				session.synced = false;
 				// update awareness (all users except local are null)
 				awarenessProtocol.removeAwarenessStates(
 					session.awareness,
@@ -192,7 +190,7 @@ const setupWS = (session) => {
 			if(!session.settings.reconnect.auto || session.unsuccessfulReconnects > session.settings.reconnect.abort || event.code == 4023) {
 				// Invalid session or connection rejected
 				session.unsuccessfulReconnects = 0;
-				session.emit('status', [{status: "aborted"}, session]);
+				session.synced = false;
 			} else {
 				// Start with a very small reconnect timeout and increase timeout by
 				// Math.round(Math.random() * (base = 500) * Math.pow((decay = 1.5), session.unsuccessfulReconnects))
@@ -201,11 +199,8 @@ const setupWS = (session) => {
 					session.settings.reconnect.max
 				);
 				setTimeout(setupWS, delay, session);
-				if(session.unsuccessfulReconnects > 3) {
-					session.emit('reconnecting', [{status: "reconnecting"}, session]);
-				}
 			}
-			session.emit('disconnected', [{
+			session.emit('status', [{
 				status: "disconnected",
 				code: event.code,
 				reason: event.reason
@@ -213,7 +208,7 @@ const setupWS = (session) => {
 		};
 
 		websocket.onopen = () => {
-			$tw.utils.log(`['${session.username}'] Opened socket ${websocket.url}`);
+			session.logger.log(`Opened socket ${websocket.url}`);
 			// Reset connection state
 			session.connecting = false;
 			session.connected = true;
@@ -222,12 +217,12 @@ const setupWS = (session) => {
 			// send messageHandshake
 			const encoder = encoding.createEncoder();
 			encoding.writeVarUint(encoder, messageHandshake);
-			session.send(encoder, session.pathPrefix);
+			session.send(encoder, session.key);
 
-			session.emit('connected', [{status: "connected"}, session]);
+			session.emit('status', [{status: "connected"}, session]);
 		};
 
-		session.emit('connecting', [{status: "connecting"}, session]);
+		session.emit('status', [{status: "connecting"}, session]);
 	}
 };
 
@@ -239,8 +234,9 @@ const setupHeartbeat = (session) => {
 	// sends out pings plus a conservative assumption of the latency (10s).  
 	session.pingTimeout = setTimeout(function() {
 		if(session.isReady()) {
+			let lastMessage = new Date(session.lastMessageReceived*1000).toLocaleString();
 			session.ws.close(4000, `Heartbeat Timeout`);
-			$tw.utils.log(`['${session.username}'] Session closed by heartbeat, last message received ${new Date(session.lastMessageReceived*1000).toLocaleString()}`);
+			session.logger.log(`Session closed by heartbeat, last message received at ${lastMessage}`);
 		}
 	}, session.settings.heartbeat.timeout + session.settings.heartbeat.interval);
 	// Send the next heartbeat ping after session.settings.heartbeat.interval ms
@@ -249,7 +245,7 @@ const setupHeartbeat = (session) => {
 		const encoderHeartbeat = encoding.createEncoder()
 		encoding.writeVarUint(encoderHeartbeat, messageHeartbeat)
 		encoding.writeVarUint(encoderHeartbeat, 0)
-		session.send(encoderHeartbeat, session.pathPrefix);
+		session.send(encoderHeartbeat, session.key);
 	}, session.settings.heartbeat.interval);
 }
 
@@ -275,8 +271,9 @@ class WebsocketSession extends observable_js.Observable {
 	 * @param {boolean} [options.isLoggedIn] The user's login state
 	 * @param {boolean} [options.isReadOnly] The User-session read-only state
 	 * @param {boolean} [options.isAnonymous] The User's anon stat
+	 * @param {object} logger A reference to the $tw.utils.Logger() to save to
 	 */
-	constructor(options) {
+	constructor(options,logger) {
 		if(!options.id || !$tw.utils.uuid.validate(options.id) || options.id == $tw.utils.uuid.NIL) {
 			throw new Error("WebsocketSession Error: invalid options.id provided in constructor.")
 		}
@@ -291,6 +288,9 @@ class WebsocketSession extends observable_js.Observable {
 		this.isReadOnly = options.isReadOnly;
 		this.access = options.access;
 		this.client = !!options.client;
+		this.logger = new $tw.utils.Logger(`[${this.pathPrefix}|'${this.username}']`,{colour: "green"});
+		(!!logger) && this.logger.setSaveBuffer(logger.saveBufferLogger);
+
 		/**
 		 * @type {boolean}
 		 */
@@ -320,7 +320,7 @@ class WebsocketSession extends observable_js.Observable {
 			 */
 			this.shouldConnect = connect;
 			this.settings = $tw.wiki.getTiddlerData("$:/config/commons/yjs/wssession", {});
-			this.doc = $tw.utils.getYDoc(options.pathPrefix);
+			this.doc = $tw.utils.getYDoc(this.key);
 			let awareness = options.awareness || new awarenessProtocol.Awareness(this.doc); // Y.doc awareness
 
 			// Browser features
@@ -369,7 +369,7 @@ class WebsocketSession extends observable_js.Observable {
 		}
 	}
 
-	getSubDoc(docname = null) {
+	getSubDoc (docname = null) {
 		if(this.client && docname == this.doc.name) {
 			return this.doc;
 		} else {
@@ -377,7 +377,7 @@ class WebsocketSession extends observable_js.Observable {
 		}
 	}
 
-	toJSON() {
+	toJSON () {
 		return {
 			id: this.id,
 			key: this.key,
@@ -406,12 +406,12 @@ class WebsocketSession extends observable_js.Observable {
 	set synced(state) {
 		if(this._synced !== state) {
 			this._synced = state;
-			this.emit('synced', [state, this]);
 			this.emit('sync', [state, this]);
 		}
+		this.emit('synced', [state, this]);
 	}
 
-	destroy() {
+	destroy () {
 		// clear the ping timers
 		clearTimeout(this.pingTimeout);
 		clearTimeout(this.ping);
@@ -419,21 +419,22 @@ class WebsocketSession extends observable_js.Observable {
 		super.destroy();
 	}
 
-	disconnect(err) {
+	disconnect (err) {
 		if(this.client) {
 			this.shouldConnect = false;
 			if(this.isReady()) {
-				this.ws.close(1000, `['${this.username}'] Session: ${this.id} closed by the client`, err);
+				this.ws.close(1000, `Session: ${this.id} closed by the client`, err);
 			}
 		} else {
-			$tw.wsServer.closeWSConnection($tw.utils.getYDoc(this.pathPrefix), this, err);
+			let wikiDoc = $tw.utils.getYDoc(this.key);
+			wikiDoc.emit('close',[session,err]);
 		}
 		this.ws = null;
 	}
 
-	connect() {
+	connect () {
 		if(!this.client || !this.url) {
-			$tw.utils.warning(`['${this.username}']  Session: ${session.id} connect error: no client url`)
+			this.logger.alert(`Session '${this.id}'' connect error: no client url`)
 			return;
 		}
 		this.shouldConnect = true;
@@ -443,11 +444,11 @@ class WebsocketSession extends observable_js.Observable {
 		}
 	}
 
-	isReady() {
+	isReady () {
 		return this.connected && !!this.ws && this.ws.readyState == 1;
 	}
 
-	getHostURL(host) {
+	getHostURL (host) {
 		let url = $tw.node ? new require('url').URL(host) : new URL(host);
 		// Websocket host
 		url.protocol = url.protocol == "https:" ? "wss:" : "ws:";
@@ -458,7 +459,7 @@ class WebsocketSession extends observable_js.Observable {
 	 * If a heartbeat is not received within session.settings.heartbeat.timeout from
 	 * the last heartbeat, terminate the given socket. Setup the next heartbeat.
 	 */
-	heartbeat() {
+	heartbeat () {
 		// clear the ping timers
 		clearTimeout(this.pingTimeout);
 		clearTimeout(this.ping);
@@ -467,21 +468,20 @@ class WebsocketSession extends observable_js.Observable {
 
 	/**
 	 * @param {BinaryEncoder} message
-	 * @param {null|string} docname
+	 * @param {null|string} docid
 	 */
-	send(message, docname = null) {
+	send (message, docid = null) {
 		if(this.isReady()) {
 			try {
 				/**
 				 * Y Messages are encoded as:
 				 * this.id {string}
-				 * this.pathPrefix {string}
-				 * docname {null|string}
+				 * docid {null|string}
 				 * message {BinaryEncoder}
 				 */
 				let encoder = encoding.createEncoder();
 				encoding.writeVarString(encoder, this.id);
-				encoding.writeAny(encoder, docname);
+				encoding.writeAny(encoder, docid);
 				encoding.writeBinaryEncoder(encoder, message);
 				this.ws.send(encoding.toUint8Array(encoder), err => {
 					err != null && this.disconnect(err)
@@ -498,12 +498,12 @@ class WebsocketSession extends observable_js.Observable {
 	 * @param {Uint8Array} message - the current event data
 	 * @return {decoder}
 	 */
-	authenticateMessage(message) {
+	authenticateMessage (message) {
 		let expired = time.getUnixTime() > this.expires,
 			decoder = decoding.createDecoder(message),
 			authed = !expired && decoding.readVarString(decoder) == this.id;
 		if(!authed) {
-			$tw.utils.warning(`['${this.username}']  Session: ${this.id} authentication error` + expired ? `, session expired` : ``);
+			this.logger.alert(`Session '${session.id}' authentication error` + expired ? `, session expired` : ``);
 		}
 		return authed ? decoder : null;
 	}

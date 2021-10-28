@@ -18,7 +18,8 @@ const FileSystemAdaptor = require("$:/plugins/tiddlywiki/filesystem/filesystemad
 function WebsocketAdaptor(options) {
 	this.wiki = options.wiki;
 	this.boot = options.boot || $tw.boot;
-	this.pathPrefix = this.boot.pathPrefix
+	this.pathPrefix = this.boot.pathPrefix;
+	this.key = this.boot.wikiInfo.uuid;
 	this.logger = new $tw.utils.Logger("wsadaptor",{colour: "blue"});
 
 	// Attach a core filesystemadaptor to this syncadaptor
@@ -48,7 +49,7 @@ function WebsocketAdaptor(options) {
     } */
 
 	// Setup the Y wikiDoc
-	let wikiDoc = $tw.utils.getYDoc(this.pathPrefix);
+	let wikiDoc = $tw.utils.getYDoc(this.key);
 	// bind to the persistence provider
 	//this.persistence.bindState(this.pathPrefix,wikiDoc);
 
@@ -72,11 +73,11 @@ WebsocketAdaptor.prototype.setLoggerSaveBuffer = function(loggerForSaving) {
 };
 
 WebsocketAdaptor.prototype.setYBinding = function(state,awareness) {
-	$tw.utils.getYBinding(this.pathPrefix,state,awareness);
+	$tw.utils.getYBinding(this.key,state,awareness);
 }
 
 WebsocketAdaptor.prototype.isReady = function() {
-	return $tw.ydocs.has(this.pathPrefix) && $tw.ybindings.has(this.pathPrefix);
+	return $tw.ydocs.has(this.key) && $tw.ybindings.has(this.key);
 };
 
 WebsocketAdaptor.prototype.getTiddlerInfo = function(tiddler) {
@@ -88,7 +89,7 @@ Save a tiddler and invoke the callback with (err,adaptorInfo,revision)
 */
 WebsocketAdaptor.prototype.saveTiddler = function(tiddler,callback,options) {
     let self = this;
-    $tw.ybindings.get(this.pathPrefix).save(tiddler,function(err){
+    $tw.ybindings.get(this.key).save(tiddler,function(err){
 		if(err) {
 			self.logger.log(err);
 		}
@@ -104,7 +105,7 @@ will have been loaded during the boot process, and all updates to thw WikiDoc ar
 But we still need to support syncer.enqueueLoadTiddler().
 */
 WebsocketAdaptor.prototype.loadTiddler = function(title,callback) {
-    $tw.ybindings.get(this.pathPrefix).load(title,function(err,fields){
+    $tw.ybindings.get(this.key).load(title,function(err,fields){
 		if(err) {
 			callback(err);
 		}
@@ -117,7 +118,7 @@ Delete a tiddler and invoke the callback with (err)
 */
 WebsocketAdaptor.prototype.deleteTiddler = function(title,callback,options) {
     let self = this;
-    $tw.ybindings.get(this.pathPrefix).delete(title,function(err){
+    $tw.ybindings.get(this.key).delete(title,function(err){
 		if(err) {
 			self.logger.log(err);
 		}

@@ -12,11 +12,12 @@ module-type: library
 
 if($tw.node) {
 	const { uniqueNamesGenerator, adjectives, colors, animals, names } = require('./external/unique-names-generator/dist/index.js');
-	const URL = require('url').URL;
 	const WS = require('./external/ws/ws.js');
 	const WebsocketSession = require('./wssession.js').WebsocketSession;
-	const Y = require('./yjs.cjs');
-	const CONFIG_API_TIDDLER = "$:/config/tiddlyweb/api";
+	const fs = require('fs');
+	const path = require('path');
+	const URL = require('url').URL;
+	const CONFIG_UUID_TIDDLER = "$:/status/UUID";
 
 /*
 	A simple websocket server extending the `ws` library
@@ -35,25 +36,10 @@ function WebSocketServer(options) {
 	this.on('listening',this.serverOpened);
 	this.on('close',this.serverClosed);
 	this.on('connection',this.handleWSConnection);
-	// Add an api key to all wikis
-	let tiddler = $tw.wiki.getTiddler(CONFIG_API_TIDDLER),
-		newFields = {
-			title: CONFIG_API_TIDDLER,
-			text: tiddler && $tw.utils.uuid.validate(tiddler.fields.text) ? tiddler.fields.text : $tw.utils.uuid.v4()
-		};
-	$tw.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
-	// Set the binding
-	$tw.syncadaptor.setYBinding($tw);
+	// Add an api key to all tiddlywiki.info files, and copy that to the CONFIG_UUID_TIDDLER
+	this.verifyState($tw);
 	$tw.states.forEach(function(state,pathPrefix) {
-		// Setup the config api key.
-		let tiddler = state.wiki.getTiddler(CONFIG_API_TIDDLER),
-			newFields = {
-				title: CONFIG_API_TIDDLER,
-				text: tiddler && $tw.utils.uuid.validate(tiddler.fields.text) ? tiddler.fields.text : $tw.utils.uuid.v4()
-			};
-		state.wiki.addTiddler(new $tw.Tiddler(tiddler,newFields));
-		// Set the binding
-		state.syncadaptor.setYBinding(state);
+		self.verifyState(state);
 	})
 }
 
@@ -70,6 +56,23 @@ WebSocketServer.prototype.serverOpened = function() {
 
 WebSocketServer.prototype.serverClosed = function() {
 
+}
+
+WebSocketServer.prototype.verifyState = function(state) {
+	// Setup the uuid key
+	let filepath = path.resolve(state.boot.wikiPath,$tw.config.wikiInfo);
+	state.syncadaptor.logger.log("Verifying tiddlywiki.info: " + filepath);
+	if(!state.boot.wikiInfo.uuid || !$tw.utils.uuid.validate(state.boot.wikiInfo.uuid) || state.boot.wikiInfo.uuid == $tw.utils.uuid.NIL) {
+		state.boot.wikiInfo.uuid = $tw.utils.uuid.v4();
+		// Save the tiddlywiki.info file
+		fs.writeFileSync(filepath,JSON.stringify(state.boot.wikiInfo,null,$tw.config.preferences.jsonSpaces),"utf8");
+	}
+	state.wiki.addTiddler(new $tw.Tiddler({
+		title: CONFIG_UUID_TIDDLER,
+		text: state.boot.wikiInfo.uuid
+	}));
+	// Set the binding
+	state.syncadaptor.setYBinding(state);
 }
 
 WebSocketServer.prototype.verifyUpgrade = function(request,options) {
@@ -106,7 +109,7 @@ WebSocketServer.prototype.verifyUpgrade = function(request,options) {
 	}
 	let session = this.getSession(state.urlInfo.searchParams.get("session")),
 		requestKey = state.urlInfo.searchParams.get("wiki"),
-		apiKey = state.wiki.getTiddlerText(CONFIG_API_TIDDLER,$tw.utils.uuid.NIL);
+		apiKey = state.wiki.getTiddlerText(CONFIG_UUID_TIDDLER,$tw.utils.uuid.NIL);
 		if(state.authenticatedUsername == "Test") apiKey = $tw.utils.uuid.NIL;
 	return !!session
 		&& (requestKey, apiKey) == (apiKey, session.key)
@@ -134,15 +137,15 @@ WebSocketServer.prototype.handleWSConnection = function(socket,request,state) {
 		session.connected = true;
 		session.synced = false;
 
-		let wikiDoc = $tw.utils.getYDoc(session.pathPrefix);
+		let wikiDoc = $tw.utils.getYDoc(state.boot.wikiInfo.uuid);
 		wikiDoc.sessions.set(session, new Set())
-		$tw.utils.log(`['${session.username}'] Opened socket ${state.ip} (${request.connection.remoteAddress}) for Session ${session.id}`);
+		session.logger.log(`Opened socket ${state.ip} (${request.connection.remoteAddress}) for Session ${session.id}`);
 		// Event handlers
 		socket.on('message', function(event) {
 			wikiDoc.emit('message',[session,event]);
 		});
 		socket.on('close', function(event) {
-			$tw.utils.log(`['${session.username}'] Closed socket ${state.ip} (${request.connection.remoteAddress}) for Session ${session.id}`);
+			session.logger.log(`Closed socket ${state.ip} (${request.connection.remoteAddress}) for Session ${session.id}`);
 			session.connecting = false;
 			session.connected = false;
 			session.synced = false;
@@ -183,7 +186,8 @@ WebSocketServer.prototype.newSession = function(options) {
 	if(options.id == $tw.utils.uuid.NIL) {
 		options.id = $tw.utils.uuid.v4();
 	}
-	let session = new WebsocketSession(options);
+	let state = $tw.utils.getStateWiki(options.pathPrefix),
+		session = new WebsocketSession(options,state.syncadaptor.logger);
 	if(session) {
 		this.setSession(session);
 	}

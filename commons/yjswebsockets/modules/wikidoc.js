@@ -216,7 +216,8 @@ class WikiDoc extends Y.Doc {
 					}
 				}
 				if(session.isReady()) {
-					session.ws.close(1000, `['${this.username}'] Session: ${session.id} Websocket closed by the server: ${this.id}`, event);
+					session.logger.log(`Websocket closed by the server`, event);
+					session.ws.close(1000, `Websocket closed by the server`);
 				}
 			})
 		}

@@ -21,20 +21,20 @@ $tw.ydocs = $tw.ydocs || new Map();
 $tw.ybindings = $tw.ybindings || new Map();
 
 /**
- * Gets a Y.Doc by name, whether in memory or on disk
+ * Gets a Y.Doc by uuid, whether in memory or on disk
  *
- * @param {string} docname - the name of the Y.Doc to find or create
+ * @param {string} docid - the uuid of the Y.Doc to find or create
  * @param {boolean} gc - whether to allow gc on the doc (applies only when created)
  * @return {Y.Doc}
  */
-exports.getYDoc = function (docname, gc) {
-	docname = docname || ''
-	return map.setIfUndefined($tw.ydocs, docname, () => {
-		const doc = new WikiDoc(docname);
+exports.getYDoc = function (docid,gc) {
+	docid = docid || ''
+	return map.setIfUndefined($tw.ydocs, docid, () => {
+		const doc = new WikiDoc(docid);
 		// disable gc when using snapshots!
 		doc.gc = gc;
-		doc.name = docname;
-		$tw.ydocs.set(docname,doc);
+		doc.name = docid;
+		$tw.ydocs.set(docid,doc);
 		return doc;
 	})
 }
@@ -42,16 +42,16 @@ exports.getYDoc = function (docname, gc) {
 /**
  * Gets a Y-Tiddlywiki binding by name, whether in memory or on disk
  *
- * @param {string} pathPrefix - the Y.Doc to bind
+ * @param {string} docid - the Y.Doc to bind
  * @param {state} state - state || $tw
  * @param {Y.awareness} awareness - state || $tw
  * @return {TiddlywikiBinding}
  */
-exports.getYBinding = function (pathPrefix,state,awareness) {
-	if(!typeof pathPrefix == "string" || !state) return null;
-	return map.setIfUndefined($tw.ybindings, pathPrefix, () => {
-		const binding = new TiddlywikiBinding(pathPrefix,state,awareness);
-		$tw.ybindings.set(pathPrefix,binding);
+exports.getYBinding = function (docid,state,awareness) {
+	if(!typeof docid == "string" || !state) return null;
+	return map.setIfUndefined($tw.ybindings, docid, () => {
+		const binding = new TiddlywikiBinding(docid,state,awareness);
+		$tw.ybindings.set(docid,binding);
 		return binding;
 	});
 }
