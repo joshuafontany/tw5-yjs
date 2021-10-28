@@ -36,7 +36,7 @@ const updateHandler = (update, origin, doc) => {
 	encoding.writeVarUint(encoder, messageSync)
 	syncProtocol.writeUpdate(encoder, update)
 	doc.sessions.forEach((_, s) => {
-		if(origin !== s.id) {
+		if(origin !== s) {
 			s.send(encoder, doc.name);
 		}
 	})
