@@ -50,22 +50,6 @@
       }
     },
     {
-      "path": "./y-leveldb",
-      "filesRegExp": "^.+\\.(c)?js(\\.map)?",
-      "isTiddlerFile": false,
-      "isEditableFile": false,
-      "fields": {
-        "title": {
-          "source": "filename",
-          "prefix": "$:/plugins/commons/yjs/"
-        },
-        "module-type": "library",
-        "type": "application/javascript",
-        "source": "https://github.com/yjs/y-leveldb",
-        "version": "0.1.0"
-      }
-    },
-    {
       "path": "./lib0",
       "filesRegExp": "^.+\\.(c)?js(\\.map)?",
       "isTiddlerFile": false,
