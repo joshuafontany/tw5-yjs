@@ -1,31 +1,52 @@
 {
-  "tiddlers": [],
-  "directories": [
+  "tiddlers": [
     {
-      "path": "./yjs",
-      "filesRegExp": "^.+\\.(c)?js(\\.map)?",
+      "file": "./node_modules/yjs/dist/yjs.cjs",
       "isTiddlerFile": false,
       "isEditableFile": false,
       "fields": {
-        "title": {
-          "source": "filename",
-          "prefix": "$:/plugins/commons/yjs/"
-        },
+        "title": "yjs.js",
         "module-type": "library",
         "type": "application/javascript",
         "source": "https://github.com/yjs/yjs",
-        "version": "13.5.12"
+        "version": "13.5.23"
       }
     },
     {
-      "path": "./y-protocols",
-      "filesRegExp": "^.+\\.(c)?js(\\.map)?",
+      "file": "./node_modules/isomorphic.js/iso.js",
+      "isTiddlerFile": false,
+      "isEditableFile": false,
+      "fields": {
+        "title": "isomorphic.js/index.js",
+        "module-type": "library",
+        "type": "application/javascript",
+        "source": "https://github.com/dmonad/isomorphic.js",
+        "version": "0.2.4"
+      }
+    },
+    {
+      "file": "./node_modules/isomorphic.js/browser.js",
+      "isTiddlerFile": false,
+      "isEditableFile": false,
+      "fields": {
+        "title": "isomorphic.js/browser.js",
+        "module-type": "library",
+        "type": "application/javascript",
+        "source": "https://github.com/dmonad/isomorphic.js",
+        "version": "0.2.4"
+      }
+    }
+  ],
+  "directories": [
+    {
+      "path": "./node_modules/y-protocols/dist",
+      "filesRegExp": "^.+\\.(c)?js$",
       "isTiddlerFile": false,
       "isEditableFile": false,
       "fields": {
         "title": {
           "source": "filename",
-          "prefix": "$:/plugins/commons/yjs/"
+          "prefix": "y-protocols/dist/"
         },
         "module-type": "library",
         "type": "application/javascript",
@@ -34,14 +55,13 @@
       }
     },
     {
-      "path": "./y-indexeddb",
-      "filesRegExp": "^.+\\.(c)?js(\\.map)?",
+      "path": "./node_modules/y-indexeddb/dist",
+      "filesRegExp": "^.+\\.(c)?js$",
       "isTiddlerFile": false,
       "isEditableFile": false,
       "fields": {
         "title": {
-          "source": "filename",
-          "prefix": "$:/plugins/commons/yjs/"
+          "source": "basename"
         },
         "module-type": "library",
         "type": "application/javascript",
@@ -50,35 +70,19 @@
       }
     },
     {
-      "path": "./lib0",
-      "filesRegExp": "^.+\\.(c)?js(\\.map)?",
+      "path": "./node_modules/lib0/dist",
+      "filesRegExp": "^.+\\.(c)?js$",
       "isTiddlerFile": false,
       "isEditableFile": false,
       "fields": {
         "title": {
           "source": "filename",
-          "prefix": "$:/plugins/commons/yjs/lib0/dist/"
+          "prefix": "lib0/dist/"
         },
         "module-type": "library",
         "type": "application/javascript",
         "source": "https://github.com/dmonad/lib0/",
-        "version": "0.1.0"
-      }
-    },
-    {
-      "path": "./isomorphic.js",
-      "filesRegExp": "^.+\\.(c)?js(\\.map)?",
-      "isTiddlerFile": false,
-      "isEditableFile": false,
-      "fields": {
-        "title": {
-          "source": "filename",
-          "prefix": "$:/plugins/commons/yjs/lib0/dist/"
-        },
-        "module-type": "library",
-        "type": "application/javascript",
-        "source": "https://github.com/dmonad/isomorphic.js",
-        "version": "0.2.4"
+        "version": "0.2.43"
       }
     }
   ]

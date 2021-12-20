@@ -1,0 +1,13 @@
+{
+  "tiddlers": [
+    {
+      "file": "delta-rollup.js",
+      "fields": {
+        "title": "quilljs/delta.js",
+        "module-type": "library",
+        "type": "application/javascript",
+        "source": "https://github.com/quilljs/delta"
+      }
+    }
+  ]
+}

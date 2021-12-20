@@ -1,7 +1,7 @@
 {
   "name": "tw5-yjs",
   "version": "0.0.1",
-  "description": "Yjs for TiddlyWiki5",
+  "description": "Yjs core libraries for TiddlyWiki5",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -9,11 +9,21 @@
     "type": "git",
     "url": "git+https://github.com/joshuafontany/TW5-yjs.git"
   },
-  "keywords": ["tiddlywiki","yjs"],
+  "keywords": [
+    "tiddlywiki",
+    "yjs"
+  ],
   "author": "joshuafontany <joshua.fontany@gmail.com>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/joshuafontany/TW5-yjs/issues"
   },
-  "homepage": "https://github.com/joshuafontany/TW5-yjs#readme"
+  "homepage": "https://github.com/joshuafontany/TW5-yjs#readme",
+  "dependencies": {
+    "isomorphic.js": "^0.2.4",
+    "lib0": "^0.2.43",
+    "y-indexeddb": "^9.0.6",
+    "y-protocols": "^1.0.5",
+    "yjs": "^13.5.23"
+  }
 }
