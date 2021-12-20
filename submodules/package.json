@@ -5,7 +5,12 @@
   "scripts": {
     "test": "echo \"Modules loaded through 'npm install'\" && exit 1"
   },
-  "keywords": ["tw5-yjs","tiddlywiki","plugin","submodules"],
+  "keywords": [
+    "tw5-yjs",
+    "tiddlywiki",
+    "plugin",
+    "submodules"
+  ],
   "author": "joshuafontany <joshua.fontany@gmail.com>",
   "license": "MIT",
   "dependencies": {
