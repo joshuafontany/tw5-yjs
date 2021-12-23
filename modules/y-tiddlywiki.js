@@ -51,12 +51,21 @@ module-type: library
 		this.ready = false;
 		this.syncer = syncer
 		this.logger = syncer.syncadaptor.logger
-		this.textFields = [];
+		
+		// Find all fields that use $tw.utils.parseStringArray
+		this.textFields = []
 		$tw.utils.each($tw.Tiddler.fieldModules,(module,name) => {
 			if(module.parse == $tw.utils.parseStringArray) {
-				this.textFields.push(name);
+				this.textFields.push(name)
 			}
-		});
+		})
+
+		// Setup a filesystem adaptor if required
+		this.fsadaptor = null
+		if ($tw.node && $tw.wiki.tiddlerExists("$:/plugins/tiddlywiki/filesystem")) {
+			const FileSystemAdaptor = require("$:/plugins/tiddlywiki/filesystem/filesystemadaptor.js").adaptorClass
+			this.fsadaptor = new FileSystemAdaptor({boot: this.syncer.syncadaptor.boot, wiki: this.syncer.syncadaptor.wiki})
+		}
 
 		const mux = createMutex()
 		this.mux = mux
@@ -287,7 +296,7 @@ module-type: library
 			this.ready = true
 		},this)
 	}
-	save (tiddler,callback) {
+	save (tiddler,callback,options) {
 		try{
 			this.wikiDoc.transact(() => {
 				this._save(tiddler)
@@ -296,7 +305,11 @@ module-type: library
 		} catch (error) {
 			return callback(error)
 		}
-		return callback(null)
+		if(!!this.fsadaptor) {
+			this.fsadaptor.saveTiddler(tiddler,callback,options)
+		} else {
+			return callback(null)
+		}
 	}
 	load (title,callback) {
 		this.logger.log(`Loading ${title}`)
@@ -308,7 +321,7 @@ module-type: library
 		}
 		return callback(null,fields)
 	}
-	delete (title,callback) {
+	delete (title,callback,options) {
 		try{
 			this.wikiDoc.transact(() => {
 				this._delete(title)
@@ -316,7 +329,11 @@ module-type: library
 		} catch (error) {
 			return callback(error)
 		}
-		return callback(null)
+		if(!!this.fsadaptor) {
+			this.fsadaptor.deleteTiddler(tiddler,callback,options)
+		} else {
+			return callback(null)
+		}
 	}
 	destroy () {
 		this.wikiTiddlers.unobserve(this._tiddlersObserver)

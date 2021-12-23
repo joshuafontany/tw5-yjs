@@ -3,7 +3,7 @@
   "description": "Yjs libraries for TiddlyWiki5",
   "author": "joshuafontany",
   "version": "0.0.1",
-  "core-version": ">=5.1.23",
+  "core-version": ">=5.2.2",
   "source": "https://github.com/joshuafontany/tw5-yjs",
   "plugin-type": "plugin",
   "list": "readme license.md"
