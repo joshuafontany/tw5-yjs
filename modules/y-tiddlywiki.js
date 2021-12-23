@@ -330,7 +330,7 @@ module-type: library
 			return callback(error)
 		}
 		if(!!this.fsadaptor) {
-			this.fsadaptor.deleteTiddler(tiddler,callback,options)
+			this.fsadaptor.deleteTiddler(title,callback,options)
 		} else {
 			return callback(null)
 		}
