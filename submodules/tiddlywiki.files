@@ -60,9 +60,7 @@
       "isTiddlerFile": false,
       "isEditableFile": false,
       "fields": {
-        "title": {
-          "source": "basename"
-        },
+        "title": "y-indexeddb.js",
         "module-type": "library",
         "type": "application/javascript",
         "source": "https://github.com/yjs/y-indexeddb",
