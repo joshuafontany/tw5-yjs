@@ -1,5 +1,5 @@
 {
-  "name": "tw5-yjs",
+  "name": "@tw5/yjs",
   "version": "0.0.1",
   "description": "Yjs core libraries for TiddlyWiki5",
   "scripts": {
@@ -7,7 +7,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/joshuafontany/TW5-yjs.git"
+    "url": "git+https://github.com/joshuafontany/tw5-yjs.git"
   },
   "keywords": [
     "tiddlywiki",
@@ -16,7 +16,7 @@
   "author": "joshuafontany <joshua.fontany@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/joshuafontany/TW5-yjs/issues"
+    "url": "https://github.com/joshuafontany/tw5-yjs/issues"
   },
-  "homepage": "https://github.com/joshuafontany/TW5-yjs#readme"
+  "homepage": "https://github.com/joshuafontany/tw5-yjs#readme"
 }
