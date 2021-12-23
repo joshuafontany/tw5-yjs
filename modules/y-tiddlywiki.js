@@ -1,5 +1,5 @@
 /*\
-title: $:/plugins/commons/yjs/y-tiddlywiki
+title: $:/plugins/@tw5/yjs/y-tiddlywiki
 type: application/javascript
 module-type: library
 
@@ -243,6 +243,7 @@ module-type: library
 				}
 			}
 		}
+		// Client awareness
 		if(awareness) {
 			this._setAwareness(awareness)
 		}

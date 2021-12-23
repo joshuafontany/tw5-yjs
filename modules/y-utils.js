@@ -1,5 +1,5 @@
 /*\
-title: $:/plugins/commons/yjs/y-utils.js
+title: $:/plugins/@tw5/yjs/y-utils.js
 type: application/javascript
 module-type: utils
 
