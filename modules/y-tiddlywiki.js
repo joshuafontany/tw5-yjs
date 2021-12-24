@@ -243,7 +243,7 @@ A yjs binding connecting a Y.Doc to the current $tw.syncer
 		if(awareness) {
 			this._setAwareness(awareness)
 		}
-	}
+	};
 
 	setAwareness (awareness) {
 		this.awareness && this.awareness.destroy()
@@ -255,7 +255,7 @@ A yjs binding connecting a Y.Doc to the current $tw.syncer
 			modifications: [],
 			deletions: []
 		}
-		let titles = syncer.filterFn.call(syncer.wiki),
+		let titles = this.syncer.filterFn.call(this.syncer.wiki),
 			maps = this.wikiTitles.toArray(),
 			diff = titles.filter(x => maps.indexOf(x) === -1)
 		// Delete those that are in titles, but not in maps
@@ -264,7 +264,7 @@ A yjs binding connecting a Y.Doc to the current $tw.syncer
 		})
 		// Compare and update the tiddlers from the maps
 		$tw.utils.each(maps,(title) => {
-			let tiddler = syncer.wiki.getTiddler(title),
+			let tiddler = this.syncer.wiki.getTiddler(title),
 				yTiddler = new $tw.Tiddler(this._load(title))
 			if(!tiddler.isEqual(yTiddler)) {
 				updates.modifications.push(title);
@@ -275,7 +275,7 @@ A yjs binding connecting a Y.Doc to the current $tw.syncer
 	setUpdates() {
 		// Compare all tiddlers in the wiki to their YDoc maps on node server startup
 		this.wikiDoc.transact(() => {
-			let titles = syncer.filterFn.call(syncer.wiki),
+			let titles = this.syncer.filterFn.call(this.syncer.wiki),
 				maps = this.wikiTitles.toArray(),
 				diff = maps.filter(x => titles.indexOf(x) === -1)
 			// Delete those that are in maps, but not in titles
@@ -286,7 +286,7 @@ A yjs binding connecting a Y.Doc to the current $tw.syncer
 			// Update the tiddlers that changed during server restart
 			this.logger.log(`Startup, testing ${titles.length} tiddlers`)
 			$tw.utils.each(titles,(title) => {
-				this._save(syncer.wiki.getTiddler(title))
+				this._save(this.syncer.wiki.getTiddler(title))
 			})
 		},this)
 	}
@@ -299,8 +299,8 @@ A yjs binding connecting a Y.Doc to the current $tw.syncer
 		} catch (error) {
 			return callback(error)
 		}
-		if(!!this.fsadaptor) {
-			this.fsadaptor.saveTiddler(tiddler,callback,options)
+		if(!!$tw.y.fsadaptor) {
+			return $tw.y.fsadaptor.saveTiddler(tiddler,callback,options)
 		} else {
 			return callback(null)
 		}
@@ -323,8 +323,8 @@ A yjs binding connecting a Y.Doc to the current $tw.syncer
 		} catch (error) {
 			return callback(error)
 		}
-		if(!!this.fsadaptor) {
-			this.fsadaptor.deleteTiddler(title,callback,options)
+		if(!!$tw.y.fsadaptor) {
+			return $tw.y.fsadaptor.deleteTiddler(title,callback,options)
 		} else {
 			return callback(null)
 		}
