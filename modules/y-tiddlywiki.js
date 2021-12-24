@@ -3,6 +3,8 @@ title: y-tiddlywiki.js
 type: application/javascript
 module-type: library
 
+A yjs binding connecting a Y.Doc to the current $tw.syncer
+
 \*/
 
 /*jslint node: true, browser: true */
@@ -47,10 +49,11 @@ module-type: library
 		* @param {awareness} [awareness] optional
 		*/
 	constructor (wikiDoc,syncer,awareness) {
-		if(!wikiDoc || !syncer) throw new Error("TiddlywikiBinding Error: invalid options provided in constructor.")
-		this.ready = false;
+		if(!wikiDoc) throw new Error("TiddlywikiBinding Error: invalid wikiDoc provided in constructor.");
+		if(!syncer) throw new Error("TiddlywikiBinding Error: sycner required.");
+
+		this.logger = new $tw.utils.Logger("yjs")
 		this.syncer = syncer
-		this.logger = syncer.syncadaptor.logger
 		
 		// Find all fields that use $tw.utils.parseStringArray
 		this.textFields = []
@@ -58,19 +61,12 @@ module-type: library
 			if(module.parse == $tw.utils.parseStringArray) {
 				this.textFields.push(name)
 			}
-		})
-
-		// Setup a filesystem adaptor if required
-		this.fsadaptor = null
-		if ($tw.node && $tw.wiki.tiddlerExists("$:/plugins/tiddlywiki/filesystem")) {
-			const FileSystemAdaptor = require("$:/plugins/tiddlywiki/filesystem/filesystemadaptor.js").adaptorClass
-			this.fsadaptor = new FileSystemAdaptor({boot: this.syncer.syncadaptor.boot, wiki: this.syncer.syncadaptor.wiki})
-		}
+		});
 
 		const mux = createMutex()
 		this.mux = mux
 
-		// Initialize the WikiDoc by applying the schema, and bind it to the syncer
+		// Initialize the WikiDoc by applying the schema, and bind it to $tw
 		this.wikiDoc = wikiDoc
 
 		const wikiTiddlers = wikiDoc.getArray("tiddlers")
@@ -248,9 +244,7 @@ module-type: library
 			this._setAwareness(awareness)
 		}
 	}
-	isReady() {
-		return this.ready
-	}
+
 	setAwareness (awareness) {
 		this.awareness && this.awareness.destroy()
 		this._setAwareness(awareness)
@@ -261,7 +255,7 @@ module-type: library
 			modifications: [],
 			deletions: []
 		}
-		let titles = this.syncer.filterFn.call(this.syncer.wiki),
+		let titles = syncer.filterFn.call(syncer.wiki),
 			maps = this.wikiTitles.toArray(),
 			diff = titles.filter(x => maps.indexOf(x) === -1)
 		// Delete those that are in titles, but not in maps
@@ -270,18 +264,18 @@ module-type: library
 		})
 		// Compare and update the tiddlers from the maps
 		$tw.utils.each(maps,(title) => {
-			let tiddler = this.syncer.wiki.getTiddler(title),
+			let tiddler = syncer.wiki.getTiddler(title),
 				yTiddler = new $tw.Tiddler(this._load(title))
 			if(!tiddler.isEqual(yTiddler)) {
 				updates.modifications.push(title);
 			}
 		})
-		this.ready = true
 		return updates
 	}
 	setUpdates() {
+		// Compare all tiddlers in the wiki to their YDoc maps on node server startup
 		this.wikiDoc.transact(() => {
-			let titles = this.syncer.filterFn.call(this.syncer.wiki),
+			let titles = syncer.filterFn.call(syncer.wiki),
 				maps = this.wikiTitles.toArray(),
 				diff = maps.filter(x => titles.indexOf(x) === -1)
 			// Delete those that are in maps, but not in titles
@@ -292,9 +286,8 @@ module-type: library
 			// Update the tiddlers that changed during server restart
 			this.logger.log(`Startup, testing ${titles.length} tiddlers`)
 			$tw.utils.each(titles,(title) => {
-				this._save(this.syncer.wiki.getTiddler(title))
+				this._save(syncer.wiki.getTiddler(title))
 			})
-			this.ready = true
 		},this)
 	}
 	save (tiddler,callback,options) {
