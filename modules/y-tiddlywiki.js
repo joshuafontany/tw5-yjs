@@ -45,15 +45,15 @@ A yjs binding connecting a Y.Doc to the current $tw.syncer
  class TiddlywikiBinding {
 	/**
 		* @param {Y.Doc} wikiDoc
-		* @param {$tw.Syncer} syncer
+		* @param {$tw} $tw
 		* @param {awareness} [awareness] optional
 		*/
-	constructor (wikiDoc,syncer,awareness) {
+	constructor (wikiDoc,$tw,awareness) {
 		if(!wikiDoc) throw new Error("TiddlywikiBinding Error: invalid wikiDoc provided in constructor.");
-		if(!syncer) throw new Error("TiddlywikiBinding Error: sycner required.");
-
+		if(!$tw) throw new Error("TiddlywikiBinding Error: tiddlywiki instance required.");
+		
+		this.$tw = $tw
 		this.logger = new $tw.utils.Logger("yjs")
-		this.syncer = syncer
 		
 		// Find all fields that use $tw.utils.parseStringArray
 		this.textFields = []
@@ -255,7 +255,7 @@ A yjs binding connecting a Y.Doc to the current $tw.syncer
 			modifications: [],
 			deletions: []
 		}
-		let titles = this.syncer.filterFn.call(this.syncer.wiki),
+		let titles = this.$tw.syncer.filterFn.call(this.$tw.syncer.wiki),
 			maps = this.wikiTitles.toArray(),
 			diff = titles.filter(x => maps.indexOf(x) === -1)
 		// Delete those that are in titles, but not in maps
@@ -264,7 +264,7 @@ A yjs binding connecting a Y.Doc to the current $tw.syncer
 		})
 		// Compare and update the tiddlers from the maps
 		$tw.utils.each(maps,(title) => {
-			let tiddler = this.syncer.wiki.getTiddler(title),
+			let tiddler = this.$tw.syncer.wiki.getTiddler(title),
 				yTiddler = new $tw.Tiddler(this._load(title))
 			if(!tiddler.isEqual(yTiddler)) {
 				updates.modifications.push(title);
@@ -275,7 +275,7 @@ A yjs binding connecting a Y.Doc to the current $tw.syncer
 	setUpdates() {
 		// Compare all tiddlers in the wiki to their YDoc maps on node server startup
 		this.wikiDoc.transact(() => {
-			let titles = this.syncer.filterFn.call(this.syncer.wiki),
+			let titles = this.$tw.syncer.filterFn.call(this.$tw.syncer.wiki),
 				maps = this.wikiTitles.toArray(),
 				diff = maps.filter(x => titles.indexOf(x) === -1)
 			// Delete those that are in maps, but not in titles
@@ -286,7 +286,7 @@ A yjs binding connecting a Y.Doc to the current $tw.syncer
 			// Update the tiddlers that changed during server restart
 			this.logger.log(`Startup, testing ${titles.length} tiddlers`)
 			$tw.utils.each(titles,(title) => {
-				this._save(this.syncer.wiki.getTiddler(title))
+				this._save(this.$tw.syncer.wiki.getTiddler(title))
 			})
 		},this)
 	}
