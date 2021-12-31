@@ -3,7 +3,9 @@ title: $:/plugins/@tw5/yjs/y-tiddlywiki.js
 type: application/javascript
 module-type: library
 
-A yjs binding connecting a Y.Doc to the current $tw.syncer
+A yjs binding connecting a Y.Doc to the current $tw.
+
+For now, created as $tw.y.binding from within the active syncadaptor.
 
 \*/
 
@@ -172,7 +174,7 @@ A yjs binding connecting a Y.Doc to the current $tw.syncer
 			if(!(tiddler instanceof $tw.Tiddler)) {
 				return;
 			}
-			if (syncer.syncadaptor.isReadOnly) {
+			if ($tw.syncer.syncadaptor.isReadOnly) {
 				$tw.syncer.enqueueLoadTiddler(tiddler.fields.title); 
 			} else {
 				let tiddlerIndex = this.wikiTitles.toArray().indexOf(tiddler.fields.title);
