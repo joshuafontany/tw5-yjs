@@ -1,5 +1,5 @@
 /*\
-title: y-tiddlywiki.js
+title: $:/plugins/@tw5/yjs/y-tiddlywiki.js
 type: application/javascript
 module-type: library
 
